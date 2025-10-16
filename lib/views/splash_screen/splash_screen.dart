@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:birthday_photo_maker/constant/color/app_colors.dart';
+import 'package:birthday_photo_maker/views/confetti_splash_screen/confetti_splash_screen.dart';
 import 'package:flutter/material.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -187,6 +188,7 @@ class _SplashScreenState extends State<SplashScreen> {
                 ],
               ),
             ),
+            // ConfettiExamplePage()
           ],
         ),
       ),

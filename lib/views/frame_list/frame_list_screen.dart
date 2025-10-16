@@ -21,7 +21,7 @@ class _FrameListScreenState extends State<FrameListScreen> {
 
   @override
   void initState() {
-    context.read<HomeProvider>().getFrameList();
+    // context.read<HomeProvider>().getFrameList();
     super.initState();
   }
 
@@ -32,7 +32,12 @@ class _FrameListScreenState extends State<FrameListScreen> {
       backgroundColor: AppColors.appWhiteColor,
 
       // Birthday app bar
-      appBar: AppBar(title: Text("Frame List "),backgroundColor: AppColors.appSecondaryColor.withValues(alpha: 0.6),),
+      appBar: AppBar(title: Consumer<HomeProvider>(
+        builder: (context, value, child) {
+          return Text("${value.categoryTitle} List ");
+        },
+
+      ),backgroundColor:  AppColors.cardColor1,),
 
       body: Consumer<HomeProvider>(
         builder: (context, provider, child) {
@@ -56,7 +61,13 @@ class _FrameListScreenState extends State<FrameListScreen> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child:
-                  provider.isLoading?const Center(child: BirthdayLoadingRing(),):
+                  provider.isLoadingframe?const Center(child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      BirthdayLoadingRing(),
+                    ],
+                  ),):
                   GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -66,15 +77,15 @@ class _FrameListScreenState extends State<FrameListScreen> {
                       mainAxisSpacing: 12,
                       childAspectRatio: 0.75,
                     ),
-                    itemCount: provider.frameResponse?.data?.length,
+                    itemCount: provider.categoryFrameResponse?.data?.length,
                     itemBuilder: (context, index) {
-                      final frame = provider.frameResponse?.data?[index];
+                      final frame = provider.categoryFrameResponse?.data?[index];
                       return GestureDetector(
                         onTap: () {
                           print("Single frame list Popular frame tapped");
                           Navigator.pushNamed(context, arguments: frame,AppRoutesName.frameEditorScreen);
                         },
-                        child:  provider.frameResponse?.data?.isNotEmpty == true ? ClipRRect(
+                        child:  provider.categoryFrameResponse?.data?.isNotEmpty == true ? ClipRRect(
                           borderRadius: BorderRadius.circular(12),
                           child: Stack(
                             fit: StackFit.expand,
@@ -202,84 +213,84 @@ class _FrameListScreenState extends State<FrameListScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                SizedBox(
-                  height: 120,
-                  child:   provider.isLoading?const Center(child: BirthdayLoadingRing(),
-                  ): ListView.builder(
-                    scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: 5,
-                    itemBuilder: (context, index) {
-                      final frame = provider.frameResponse?.data?[index];
-                      return GestureDetector(
-                        onTap: () {
-                          provider.selectFrame(frame?.frameIdPk.toString()??"");
-                          print("Single frame list Popular frame tapped");
-                          Navigator.pushNamed(context, arguments: frame,AppRoutesName.frameEditorScreen);
-                        },
-                        child: Container(
-                          margin: const EdgeInsets.only(right: 12),
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: AppColors.borderColor,
-                              width: 2,
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: _getGradientColors(index + 5),
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
-                                blurRadius: 6,
-                                offset: const Offset(0, 3),
-                              ),
-                            ],
-                          ),
-                          child: Stack(
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: Image.network(
-                                  frame?.frameImage??'',
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                              // if (frame.discount != null)
-                              //   Positioned(
-                              //     top: 8,
-                              //     left: 8,
-                              //     child: Container(
-                              //       padding: const EdgeInsets.symmetric(
-                              //         horizontal: 8,
-                              //         vertical: 4,
-                              //       ),
-                              //       decoration: BoxDecoration(
-                              //         color: Colors.white,
-                              //         borderRadius: BorderRadius.circular(8),
-                              //         border: Border.all(
-                              //           color: Colors.pink.shade200,
-                              //           width: 2,
-                              //         ),
-                              //       ),
-                              //       child: Text(
-                              //         frame.discount!,
-                              //         style: TextStyle(
-                              //           color: Colors.pink.shade700,
-                              //           fontSize: 12,
-                              //           fontWeight: FontWeight.bold,
-                              //         ),
-                              //       ),
-                              //     ),
-                              //   ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
+                // SizedBox(
+                //   height: 120,
+                //   child:   provider.isLoading?const Center(child: SizedBox.shrink(),
+                //   ): ListView.builder(
+                //     scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 16),
+                //     itemCount: 5,
+                //     itemBuilder: (context, index) {
+                //       final frame = provider.frameResponse?.data?[index];
+                //       return GestureDetector(
+                //         onTap: () {
+                //           provider.selectFrame(frame?.frameIdPk.toString()??"");
+                //           print("Single frame list Popular frame tapped");
+                //           Navigator.pushNamed(context, arguments: frame,AppRoutesName.frameEditorScreen);
+                //         },
+                //         child: Container(
+                //           margin: const EdgeInsets.only(right: 12),
+                //           decoration: BoxDecoration(
+                //             border: Border.all(
+                //               color: AppColors.borderColor,
+                //               width: 2,
+                //             ),
+                //             borderRadius: BorderRadius.circular(12),
+                //             gradient: LinearGradient(
+                //               begin: Alignment.topLeft,
+                //               end: Alignment.bottomRight,
+                //               colors: _getGradientColors(index + 5),
+                //             ),
+                //             boxShadow: [
+                //               BoxShadow(
+                //                 color: Colors.black.withOpacity(0.1),
+                //                 blurRadius: 6,
+                //                 offset: const Offset(0, 3),
+                //               ),
+                //             ],
+                //           ),
+                //           child: Stack(
+                //             children: [
+                //               ClipRRect(
+                //                 borderRadius: BorderRadius.circular(12),
+                //                 child: Image.network(
+                //                   frame?.frameImage??'',
+                //                   fit: BoxFit.cover,
+                //                 ),
+                //               ),
+                //               // if (frame.discount != null)
+                //               //   Positioned(
+                //               //     top: 8,
+                //               //     left: 8,
+                //               //     child: Container(
+                //               //       padding: const EdgeInsets.symmetric(
+                //               //         horizontal: 8,
+                //               //         vertical: 4,
+                //               //       ),
+                //               //       decoration: BoxDecoration(
+                //               //         color: Colors.white,
+                //               //         borderRadius: BorderRadius.circular(8),
+                //               //         border: Border.all(
+                //               //           color: Colors.pink.shade200,
+                //               //           width: 2,
+                //               //         ),
+                //               //       ),
+                //               //       child: Text(
+                //               //         frame.discount!,
+                //               //         style: TextStyle(
+                //               //           color: Colors.pink.shade700,
+                //               //           fontSize: 12,
+                //               //           fontWeight: FontWeight.bold,
+                //               //         ),
+                //               //       ),
+                //               //     ),
+                //               //   ),
+                //             ],
+                //           ),
+                //         ),
+                //       );
+                //     },
+                //   ),
+                // ),
                 const SizedBox(height: 20),
               ],
             ),

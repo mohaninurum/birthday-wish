@@ -4,17 +4,20 @@ import 'dart:typed_data';
 import 'dart:io';
 import 'dart:ui';
 import 'package:birthday_photo_maker/provider/Home_provider/Home_provider.dart';
+import 'package:birthday_photo_maker/routes/app_routes_name.dart';
 import 'package:birthday_photo_maker/widgets/BirthdayLoadingRing.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart' as igs;
 import 'package:provider/provider.dart';
-// import 'package:image_gallery_saver/image_gallery_saver.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:share_plus/share_plus.dart';
 
 
 import '../../constant/color/app_colors.dart';
@@ -32,6 +35,7 @@ class EditorScreen extends StatefulWidget {
 class _EditorScreenState extends State<EditorScreen> {
   EditableItem? _activeItem;
   EditableItem? _backgroundItem;
+  EditableItem? _backgroundItem1;
   bool _pointerDownOnItem = false;
   Offset? _initPos;
   Offset? _currentPos;
@@ -40,21 +44,30 @@ class _EditorScreenState extends State<EditorScreen> {
   bool _inAction = false;
   String? selectedFrame;
   List<EditableItem> items = [];
-
+  int frameType=0;
   ScreenshotController screenshotController = ScreenshotController();
 
   // 🎉 Emojis, Stickers & Frames
-  final List<String> emojis = ['🎂', '🎉', '❤️', '🥳', '🎁', '✨', '😍'];
+  final List<String> emojis = [
+    // 🎂 Birthday & Celebration
+    '🎂', '🎉', '🎁', '🥳', '🎈', '🎊', '🍰', '🧁', '🍬', '🍭',
+    '🎇', '🎆', '✨', '🌟', '💫', '🎶', '🎵', '🎤', '🎧', '🎷',
 
-  final List<String> frames = [
-    'https://i.pinimg.com/736x/fc/06/ac/fc06ac39ecbf23f97274349959f61ad4.jpg',
-    'https://i.pinimg.com/736x/fc/06/ac/fc06ac39ecbf23f97274349959f61ad4.jpg',
-    'https://i.pinimg.com/736x/fc/06/ac/fc06ac39ecbf23f97274349959f61ad4.jpg',
-    'https://i.pinimg.com/736x/fc/06/ac/fc06ac39ecbf23f97274349959f61ad4.jpg',
+    // ❤️ Love & Affection
+    '❤️', '💖', '💘', '💕', '💞', '💓', '💗', '💝', '💟', '😍',
+    '😘', '🥰', '😚', '😻', '💋', '🌹', '💐', '🌸', '🌺', '🌼',
+
+    // 😊 Happiness & Fun
+    '😄', '😃', '😀', '😁', '😂', '🤣', '😜', '😝', '😆', '😇',
+    '😎', '🤩', '😋', '🤗', '😺', '🤪', '😌', '😛', '🙃', '😅',
+
+    // 🎁 Misc Creative / Sparkle
+    '🌈', '☀️', '⭐', '🌙', '🔥', '💎', '🪩', '🎨', '🎬', '📸',
   ];
 
 
-   List<String> kFontFamilies = [
+
+  List<String> kFontFamilies = [
     'Poppins',
     'Roboto',
     'Montserrat',
@@ -65,16 +78,57 @@ class _EditorScreenState extends State<EditorScreen> {
     'Raleway',
     'Nunito',
     'Open Sans',
+    'Inter',
+    'Noto Sans',
+    'Ubuntu',
+    'Rubik',
+    'Quicksand',
+    'Karla',
+    'Josefin Sans',
+    'Cabin',
+    'PT Sans',
+    'Arimo',
+    'Work Sans',
+    'Heebo',
+    'Manrope',
+    'Fira Sans',
+    'Mulish',
+    'Titillium Web',
+    'Barlow',
+    'Catamaran',
+    'Domine',
+    'Crimson Text',
+    'DM Sans',
+    'Bebas Neue',
+    'Cormorant Garamond',
+    'Space Grotesk',
+    'Overpass',
+    'Zilla Slab',
+    'Lexend',
+    'Exo 2',
+    'Yanone Kaffeesatz',
+    'Noto Serif',
+    'PT Serif',
+    'Varela Round',
+    'Dosis',
+    'Signika',
+    'Righteous',
+    'Cairo',
+    'Teko',
+    'Asap',
+    'Bitter',
   ];
+
 
   @override
   void initState() {
-
+    frameType=0;
 
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadFrameImage();
       Provider.of<EditProvider>(context, listen: false).getStickerList();
+      context.read<HomeProvider>().getFrameList();
     });
 
     super.initState();
@@ -93,15 +147,13 @@ class _EditorScreenState extends State<EditorScreen> {
         backgroundColor: AppColors.appSecondaryColor.withValues(alpha: 0.6),
         actions: [
           IconButton(
-            icon: const Icon(Icons.share_sharp),
-            onPressed: _saveToGallery,
-          ),
-          IconButton(
             icon: const Icon(Icons.bookmark_border),
-            onPressed: _saveToGallery,
+            onPressed: () {
+
+            },
           ),   IconButton(
             icon: const Icon(Icons.download),
-            onPressed: _saveToGallery,
+            onPressed:  () => _saveToGallery(context),
           ),
         ],
       ),
@@ -164,13 +216,15 @@ class _EditorScreenState extends State<EditorScreen> {
                     Container(color: Colors.black87),
                     if (_backgroundItem != null)
                       _buildItemWidget(_backgroundItem!, true),
-                    if (selectedFrame != null)
+                    if (_backgroundItem1 != null)
+                      _buildItemWidget(_backgroundItem1!, true),
+                    selectedFrame != null?
                       Padding(
                         padding: const EdgeInsets.all(0.0),
                         child: CachedNetworkImage(
                           height: MediaQuery.of(context).size.height,
                           width: MediaQuery.of(context).size.width,
-                          fit: BoxFit.cover,
+                          fit: BoxFit.fitWidth,
                           imageUrl: selectedFrame!,
                           progressIndicatorBuilder:
                               (context, url, downloadProgress) =>
@@ -178,80 +232,13 @@ class _EditorScreenState extends State<EditorScreen> {
                           errorWidget: (context, url, error) =>
                           const Icon(Icons.error),
                         ),
-                      ),
+                      ):Center(child: Text("Add Frame",style: TextStyle(color: AppColors.appWhiteColor),),),
                     ...items.map((e) => _buildItemWidget(e, false)).toList(),
                   ],
                 ),
               ),
             ),
           ),
-          // Expanded(
-          //   child: Screenshot(
-          //     controller: screenshotController,
-          //     child: GestureDetector(
-          //       onScaleStart: (details) {
-          //         if (_activeItem == null && _backgroundItem == null) return;
-          //         if (_activeItem != null) {
-          //           _initPos = details.focalPoint;
-          //           _currentPos = _activeItem!.position;
-          //           _currentScale = _activeItem!.scale;
-          //           _currentRotation = _activeItem!.rotation;
-          //         } else if (_backgroundItem != null) {
-          //           _initPos = details.focalPoint;
-          //           _currentPos = _backgroundItem!.position;
-          //           _currentScale = _backgroundItem!.scale;
-          //           _currentRotation = _backgroundItem!.rotation;
-          //         }
-          //       },
-          //       onScaleUpdate: (details) {
-          //         if (_activeItem == null && _backgroundItem == null) return;
-          //         final delta = details.focalPoint - _initPos!;
-          //         final dx = delta.dx / screen.width;
-          //         final dy = delta.dy / screen.height;
-          //
-          //         setState(() {
-          //           if (_activeItem != null) {
-          //             _activeItem!.position =
-          //                 Offset(_currentPos!.dx + dx, _currentPos!.dy + dy);
-          //             _activeItem!.rotation = details.rotation + _currentRotation;
-          //             _activeItem!.scale =
-          //                 max(min(details.scale * _currentScale, 3), 0.3);
-          //           } else if (_backgroundItem != null) {
-          //             _backgroundItem!.position =
-          //                 Offset(_currentPos!.dx + dx, _currentPos!.dy + dy);
-          //             _backgroundItem!.rotation =
-          //                 details.rotation + _currentRotation;
-          //             _backgroundItem!.scale =
-          //                 max(min(details.scale * _currentScale, 3), 0.3);
-          //           }
-          //         });
-          //       },
-          //       onTapDown: (_) => _activeItem = null,
-          //       child: Stack(
-          //         children: [
-          //           Container(color: Colors.black87),
-          //           if (_backgroundItem != null)
-          //             _buildItemWidget(_backgroundItem!, true),
-          //           if (selectedFrame != null)
-          //             Padding(
-          //               padding: const EdgeInsets.all(0.0),
-          //               child: CachedNetworkImage(
-          //                 height: screen.height,
-          //                 width: screen.width,
-          //                 fit: BoxFit.cover,
-          //                 imageUrl: selectedFrame!,
-          //                 progressIndicatorBuilder: (context, url, downloadProgress) =>
-          //                     Center(child:  BirthdayLoadingRing()),
-          //                 errorWidget: (context, url, error) => Icon(Icons.error),
-          //               ),
-          //             ),
-          //           ...items.map((e) => _buildItemWidget(e, false)).toList(),
-          //
-          //         ],
-          //       ),
-          //     ),
-          //   ),
-          // ),
           Container(
             width: double.infinity,
             height: 100, // fixed height for bottom toolbar
@@ -350,7 +337,7 @@ class _EditorScreenState extends State<EditorScreen> {
       case ItemType.Image:
         content = Image.file(
           File(e.value),
-          fit: BoxFit.cover,
+          fit: BoxFit.fitWidth,
           height: screen.height,
           width: screen.width,
         );
@@ -374,37 +361,37 @@ class _EditorScreenState extends State<EditorScreen> {
           ),
           child: content,
         ),
-        if (isActive) Positioned(
-          top: -10,
-          right: -10,
+        if (isActive)     Positioned(
+          top: -14,
+          right: -14,
           child: Transform.rotate(
-            angle: -e.rotation,
-            child: InkWell(
-              customBorder: const CircleBorder(),
-              onTap: () {
-                print('Delete button tapped');
-                setState(() {
-                  items.remove(e);
-                  if (identical(_activeItem, e)) _activeItem = null;
-                });
-              },
-              child: Material(
-                color: Colors.transparent,
+            angle: -e.rotation, // keep upright
+            child: Material(
+              color: Colors.transparent,
+              shape: const CircleBorder(),
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: () {
+                  setState(() {
+                    items.removeWhere((it) => identical(it, e)); // exact instance
+                    if (identical(_activeItem, e)) _activeItem = null;
+                  });
+                },
                 child: Ink(
+                  width: 30,  // bigger hit area
+                  height: 30,
                   decoration: ShapeDecoration(
                     color: theme.colorScheme.error,
                     shape: const CircleBorder(),
                     shadows: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
+                        color: Colors.black.withOpacity(0.20),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
                     ],
                   ),
-                  padding: const EdgeInsets.all(4),
-                  child: const Icon(Icons.delete_rounded,
-                      size: 10, color: Colors.white),
+                  child: const Icon(Icons.delete_rounded, size: 18, color: Colors.white),
                 ),
               ),
             ),
@@ -447,6 +434,7 @@ class _EditorScreenState extends State<EditorScreen> {
     );
   }
   Future<void> _pickBackgroundImage() async {
+
     final picker = ImagePicker();
     final picked = await picker.pickImage(source: ImageSource.gallery);
     if (picked != null) {
@@ -458,6 +446,18 @@ class _EditorScreenState extends State<EditorScreen> {
           scale: 1.0,
           rotation: 0.0,
         );
+        // if(frameType==0){
+        //   frameType=1;
+        //    }
+        // if(frameType==1){
+        //   _backgroundItem1    = EditableItem(
+        //     type: ItemType.Image,
+        //     value: picked.path,
+        //     position: const Offset(0.0, 0.0),
+        //     scale: 1.0,
+        //     rotation: 0.0,
+        //   );
+        // }
       });
       // Navigator.pop(context);
     }
@@ -1019,15 +1019,191 @@ class _EditorScreenState extends State<EditorScreen> {
     );
   }
 
-  Future<void> _saveToGallery() async {
-    await Permission.storage.request();
-    final image = await screenshotController.capture();
-    if (image != null) {
-      // await ImageGallerySaver.saveImage(Uint8List.fromList(image));
-      // ScaffoldMessenger.of(context)
-      //     .showSnackBar(const SnackBar(content: Text('Saved to Gallery 🎉')));
+  Future<void> _saveToGallery(BuildContext context) async {
+    // Permissions
+    if (Platform.isAndroid) {
+      // Android < 13 ke liye helpful. Android 13+ me optional hai.
+      await Permission.storage.request();
+    } else if (Platform.isIOS) {
+      await Permission.photosAddOnly.request();
+    }
+
+    final bytes = await screenshotController.capture(pixelRatio: 2.0);
+    if (bytes == null) return;
+
+    final result = await igs.ImageGallerySaverPlus.saveImage(
+      bytes,
+      quality: 100,
+      name: 'birthday_${DateTime.now().millisecondsSinceEpoch}',
+      isReturnImagePathOfIOS: true,
+    );
+
+    bool ok = false;
+    String? savedPath;
+
+    if (result is Map) {
+      ok = result['isSuccess'] == true || result['is_success'] == true;
+      savedPath = (result['filePath'] ??
+          result['file_path'] ??
+          result['path'] ??
+          result['file'])
+          ?.toString();
+    } else if (result is bool) {
+      ok = result;
+    }
+
+    if (!context.mounted) return;
+
+    if (ok) {
+      // Preview bottom sheet with Share + Go Home
+      await _showSavedBottomSheet(context, bytes, savedPath: savedPath);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Save failed: $result')),
+      );
     }
   }
+
+  Future<void> _showSavedBottomSheet(
+      BuildContext context,
+      Uint8List bytes, {
+        String? savedPath,
+      }) async {
+    if (!context.mounted) return;
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.black26,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const Text(
+                'Saved to Gallery 🎉',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 12),
+
+              // Image Preview
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: AspectRatio(
+                  aspectRatio: 3 / 4, // apne UI ke hisaab se change kar sakte ho
+                  child: Image.memory(
+                    bytes,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // Buttons Row
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(style: ButtonStyle(overlayColor: WidgetStatePropertyAll(Colors.red)),
+                      onPressed: () {
+                        // Bottom sheet close + Home par jaana
+                        Navigator.of(context).pop(); // close sheet
+                        // Option A: first route (assumes first route is Home)
+                        Navigator.of(context).popUntil((route) => route.isFirst);
+
+                        // Option B (agar aapke paas named route hai):
+                        Navigator.pushNamed(context, AppRoutesName.homeScreen);
+                      },
+                      icon: const Icon(Icons.home_rounded),
+                      label: const Text('Go Home'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => _shareImage(context, bytes, savedPath: savedPath),
+                      icon: const Icon(Icons.share_rounded),
+                      label: const Text('Share'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _shareImage(
+      BuildContext context,
+      Uint8List bytes, {
+        String? savedPath,
+      }) async {
+    try {
+      XFile? xfile;
+
+      // Agar valid file path mil gaya ho to use kar lo
+      if (savedPath != null) {
+        final normalized = _normalizePath(savedPath);
+        final f = File(normalized);
+        if (await f.exists()) {
+          xfile = XFile(
+            f.path,
+            mimeType: 'image/png',
+            name: 'image.png',
+          );
+        }
+      }
+
+      // Fallback: bytes ko temp file me likh ke share karo (reliable across platforms)
+      xfile ??= await _tempXFileFromBytes(bytes);
+
+      await Share.shareXFiles(
+        [xfile],
+        text: 'Check this out 🎉',
+        subject: 'My Image',
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Share failed: $e')),
+      );
+    }
+  }
+
+  String _normalizePath(String p) {
+    // iOS/Android kabhi kabhi file:// prefix dete hain
+    if (p.startsWith('file://')) {
+      return Uri.parse(p).toFilePath();
+    }
+    return p;
+  }
+
+  Future<XFile> _tempXFileFromBytes(Uint8List bytes) async {
+    final dir = await getTemporaryDirectory();
+    final path = '${dir.path}/share_${DateTime.now().millisecondsSinceEpoch}.png';
+    final file = File(path);
+    await file.writeAsBytes(bytes, flush: true);
+    return XFile(file.path, mimeType: 'image/png', name: 'image.png');
+  }
+
+
+
 }
 
 

@@ -1,11 +1,14 @@
 import 'dart:ui';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+
+import '../../../widgets/BirthdayLoadingRing.dart';
 
 class FeatureCard extends StatelessWidget {
   final String title;
   final Color color1;
   final Color color2;
-  final IconData icon;
+  final String? icon;
   // Optional goodies
   final String? subtitle;          // small line under title
   final String? badgeEmoji;        // top-right badge, e.g. '✨'
@@ -14,7 +17,8 @@ class FeatureCard extends StatelessWidget {
   final double minHeight;          // min height of the card
   final EdgeInsetsGeometry padding;
   final bool showSparkles;         // decorative sparkles
-  final bool showGloss;            // top gloss highlight
+  final bool showGloss;
+
 
   const FeatureCard({
     super.key,
@@ -30,12 +34,14 @@ class FeatureCard extends StatelessWidget {
     this.padding = const EdgeInsets.all(16),
     this.showSparkles = true,
     this.showGloss = true,
+
   });
 
   @override
   Widget build(BuildContext context) {
     final radius = BorderRadius.circular(borderRadius);
-
+    print("Image Url");
+   print(icon);
     return Padding(
       padding: const EdgeInsets.all(15.0),
       child: Container(
@@ -138,7 +144,15 @@ class FeatureCard extends StatelessWidget {
                               width: 1,
                             ),
                           ),
-                          child: Icon(icon, color: Colors.white, size: iconSize),
+                          child:     icon !=null?  CachedNetworkImage(
+                            width: 50,
+                            height: 50,
+                            fit: BoxFit.cover,
+                            imageUrl: icon??'',
+                            progressIndicatorBuilder: (context, url, downloadProgress) =>
+                                Center(child:  BirthdayLoadingRing()),
+                            errorWidget: (context, url, error) => Icon(Icons.error),
+                          ):Icon(Icons.insert_photo_outlined),
                         ),
                       ),
                     ),

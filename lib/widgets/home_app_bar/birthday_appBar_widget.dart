@@ -72,7 +72,7 @@ class BirthdayAppBar extends StatelessWidget implements PreferredSizeWidget{
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            _glassIconButton(Icons.card_giftcard, onTap: onGiftTap),
+                            _glassIconButton(Icons.menu, onTap: onGiftTap),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                               decoration: BoxDecoration(
