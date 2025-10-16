@@ -107,6 +107,7 @@ class _FrameCategoryState extends State<FrameCategory> {
                         color1: AppColors.cardColor1,
                         color2: AppColors.cardColor1,
                         icon: null,
+                        iconData:  Icons.insert_photo_outlined,
                       ),
                     );
                   },

@@ -1,8 +1,7 @@
-import 'dart:math';
-import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:io';
 import 'dart:ui';
+import 'dart:math' as math;
 import 'package:birthday_photo_maker/provider/Home_provider/Home_provider.dart';
 import 'package:birthday_photo_maker/routes/app_routes_name.dart';
 import 'package:birthday_photo_maker/widgets/BirthdayLoadingRing.dart';
@@ -10,6 +9,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart' as igs;
@@ -19,128 +19,102 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
 
-
 import '../../constant/color/app_colors.dart';
 import '../../model/frame_list_model/frame_list_model.dart';
 import '../../provider/editor_provider/edit_provider.dart';
 
 class EditorScreen extends StatefulWidget {
   final FrameData? frame;
-  const EditorScreen({super.key,this.frame});
+  final int? frameType;
+  const EditorScreen({super.key, this.frame,this.frameType});
 
   @override
   _EditorScreenState createState() => _EditorScreenState();
 }
 
 class _EditorScreenState extends State<EditorScreen> {
+  // Foreground active (text/sticker/emoji)
   EditableItem? _activeItem;
-  EditableItem? _backgroundItem;
+
+  // 3 independent background layers
   EditableItem? _backgroundItem1;
+  EditableItem? _backgroundItem2;
+  // EditableItem? _backgroundItem3;
+
+  // Currently active background item for gesture/highlight + delete
+  EditableItem? _activeBgItem;
+
   bool _pointerDownOnItem = false;
-  Offset? _initPos;
+
+  // Gesture snapshots
+  Offset? _initLocal; // local to canvas
   Offset? _currentPos;
   double _currentScale = 1;
   double _currentRotation = 0;
   bool _inAction = false;
   String? selectedFrame;
   List<EditableItem> items = [];
-  int frameType=0;
-  ScreenshotController screenshotController = ScreenshotController();
 
-  // 🎉 Emojis, Stickers & Frames
+  // Which background slot to fill next (1 -> 2 -> 3 -> 1 ...)
+  int frameType = 0;
+
+  // Screenshot
+  final ScreenshotController screenshotController = ScreenshotController();
+
+  // Canvas key (for correct local coordinates)
+  final GlobalKey _canvasKey = GlobalKey();
+
+  // Emojis and fonts
   final List<String> emojis = [
-    // 🎂 Birthday & Celebration
     '🎂', '🎉', '🎁', '🥳', '🎈', '🎊', '🍰', '🧁', '🍬', '🍭',
     '🎇', '🎆', '✨', '🌟', '💫', '🎶', '🎵', '🎤', '🎧', '🎷',
-
-    // ❤️ Love & Affection
     '❤️', '💖', '💘', '💕', '💞', '💓', '💗', '💝', '💟', '😍',
     '😘', '🥰', '😚', '😻', '💋', '🌹', '💐', '🌸', '🌺', '🌼',
-
-    // 😊 Happiness & Fun
     '😄', '😃', '😀', '😁', '😂', '🤣', '😜', '😝', '😆', '😇',
     '😎', '🤩', '😋', '🤗', '😺', '🤪', '😌', '😛', '🙃', '😅',
-
-    // 🎁 Misc Creative / Sparkle
     '🌈', '☀️', '⭐', '🌙', '🔥', '💎', '🪩', '🎨', '🎬', '📸',
   ];
 
-
-
-  List<String> kFontFamilies = [
-    'Poppins',
-    'Roboto',
-    'Montserrat',
-    'Lato',
-    'Merriweather',
-    'Playfair Display',
-    'Oswald',
-    'Raleway',
-    'Nunito',
-    'Open Sans',
-    'Inter',
-    'Noto Sans',
-    'Ubuntu',
-    'Rubik',
-    'Quicksand',
-    'Karla',
-    'Josefin Sans',
-    'Cabin',
-    'PT Sans',
-    'Arimo',
-    'Work Sans',
-    'Heebo',
-    'Manrope',
-    'Fira Sans',
-    'Mulish',
-    'Titillium Web',
-    'Barlow',
-    'Catamaran',
-    'Domine',
-    'Crimson Text',
-    'DM Sans',
-    'Bebas Neue',
-    'Cormorant Garamond',
-    'Space Grotesk',
-    'Overpass',
-    'Zilla Slab',
-    'Lexend',
-    'Exo 2',
-    'Yanone Kaffeesatz',
-    'Noto Serif',
-    'PT Serif',
-    'Varela Round',
-    'Dosis',
-    'Signika',
-    'Righteous',
-    'Cairo',
-    'Teko',
-    'Asap',
-    'Bitter',
+  final List<String> kFontFamilies = [
+    'Poppins', 'Roboto', 'Montserrat', 'Lato', 'Merriweather', 'Playfair Display',
+    'Oswald', 'Raleway', 'Nunito', 'Open Sans', 'Inter', 'Noto Sans', 'Ubuntu',
+    'Rubik', 'Quicksand', 'Karla', 'Josefin Sans', 'Cabin', 'PT Sans', 'Arimo',
+    'Work Sans', 'Heebo', 'Manrope', 'Fira Sans', 'Mulish', 'Titillium Web',
+    'Barlow', 'Catamaran', 'Domine', 'Crimson Text', 'DM Sans', 'Bebas Neue',
+    'Cormorant Garamond', 'Space Grotesk', 'Overpass', 'Zilla Slab', 'Lexend',
+    'Exo 2', 'Yanone Kaffeesatz', 'Noto Serif', 'PT Serif', 'Varela Round',
+    'Dosis', 'Signika', 'Righteous', 'Cairo', 'Teko', 'Asap', 'Bitter',
   ];
-
 
   @override
   void initState() {
-    frameType=0;
-
+    if(widget.frame?.frameSlot=="1"){
+      frameType=0;
+    }else{
+      frameType=1;
+    }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+
       _loadFrameImage();
       Provider.of<EditProvider>(context, listen: false).getStickerList();
       context.read<HomeProvider>().getFrameList();
     });
-
     super.initState();
   }
 
+  Size? get _canvasSize {
+    final box = _canvasKey.currentContext?.findRenderObject() as RenderBox?;
+    return box?.size;
+  }
 
-
+  Offset? _toLocal(Offset global) {
+    final box = _canvasKey.currentContext?.findRenderObject() as RenderBox?;
+    return box?.globalToLocal(global);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final screen = MediaQuery.of(context).size;
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Edit'),
@@ -149,19 +123,28 @@ class _EditorScreenState extends State<EditorScreen> {
           IconButton(
             icon: const Icon(Icons.bookmark_border),
             onPressed: () {
-
+              for (final element in items) {
+                // ignore: avoid_print
+                print([
+                  element.fontWeight,
+                  element.fontSize,
+                  element.fontStyle,
+                  element.value,
+                  element.type,
+                  element.fontFamily,
+                  element.position,
+                  element.rotation,
+                  element.scale,
+                ]);
+              }
             },
-          ),   IconButton(
+          ),
+          IconButton(
             icon: const Icon(Icons.download),
-            onPressed:  () => _saveToGallery(context),
+            onPressed: () => _saveToGallery(context),
           ),
         ],
       ),
-      // floatingActionButton: FloatingActionButton(
-      //   backgroundColor: AppColors.appSecondaryColor.withValues(alpha: 0.6),
-      //   child: const Icon(Icons.add),
-      //   onPressed: _showAddOptions,
-      // ),
       body: Column(
         children: [
           Expanded(
@@ -170,78 +153,110 @@ class _EditorScreenState extends State<EditorScreen> {
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onScaleStart: (details) {
-                  if (_activeItem == null && _backgroundItem == null) return;
+                  if (_activeItem == null && _activeBgItem == null) return;
+
+                  _initLocal = _toLocal(details.focalPoint);
+
                   if (_activeItem != null) {
-                    _initPos = details.focalPoint;
                     _currentPos = _activeItem!.position;
                     _currentScale = _activeItem!.scale;
                     _currentRotation = _activeItem!.rotation;
-                  } else if (_backgroundItem != null) {
-                    _initPos = details.focalPoint;
-                    _currentPos = _backgroundItem!.position;
-                    _currentScale = _backgroundItem!.scale;
-                    _currentRotation = _backgroundItem!.rotation;
+                  } else if (_activeBgItem != null) {
+                    _currentPos = _activeBgItem!.position;
+                    _currentScale = _activeBgItem!.scale;
+                    _currentRotation = _activeBgItem!.rotation;
                   }
                 },
                 onScaleUpdate: (details) {
-                  if (_activeItem == null && _backgroundItem == null) return;
-                  final Size screen = MediaQuery.of(context).size;
-                  final delta = details.focalPoint - _initPos!;
-                  final dx = delta.dx / screen.width;
-                  final dy = delta.dy / screen.height;
+                  if (_activeItem == null && _activeBgItem == null) return;
+                  final size = _canvasSize;
+                  final local = _toLocal(details.focalPoint);
+                  if (size == null || _initLocal == null || local == null) return;
+
+                  final delta = local - _initLocal!;
+                  final dx = delta.dx / size.width;
+                  final dy = delta.dy / size.height;
 
                   setState(() {
                     if (_activeItem != null) {
                       _activeItem!.position =
-                          Offset(_currentPos!.dx + dx, _currentPos!.dy + dy);
+                          Offset((_currentPos?.dx ?? 0) + dx, (_currentPos?.dy ?? 0) + dy);
                       _activeItem!.rotation = details.rotation + _currentRotation;
                       _activeItem!.scale =
                           math.max(math.min(details.scale * _currentScale, 3), 0.3);
-                    } else if (_backgroundItem != null) {
-                      _backgroundItem!.position =
-                          Offset(_currentPos!.dx + dx, _currentPos!.dy + dy);
-                      _backgroundItem!.rotation = details.rotation + _currentRotation;
-                      _backgroundItem!.scale =
+                    } else if (_activeBgItem != null) {
+                      _activeBgItem!.position =
+                          Offset((_currentPos?.dx ?? 0) + dx, (_currentPos?.dy ?? 0) + dy);
+                      _activeBgItem!.rotation = details.rotation + _currentRotation;
+                      _activeBgItem!.scale =
                           math.max(math.min(details.scale * _currentScale, 3), 0.3);
                     }
                   });
                 },
+                // Keep background selection after gesture (so delete button visible)
+                onScaleEnd: (_) {
+                  _initLocal = null;
+                },
                 onTapDown: (_) {
                   if (!_pointerDownOnItem) {
-                    setState(() => _activeItem = null);
+                    setState(() {
+                      _activeItem = null;
+                      _activeBgItem = null; // clear background selection too
+                    });
                   }
                 },
                 child: Stack(
                   children: [
-                    Container(color: Colors.black87),
-                    if (_backgroundItem != null)
-                      _buildItemWidget(_backgroundItem!, true),
+                    // Canvas background holder with key (important for size/coords)
+                    Container(key: _canvasKey, color: Colors.black87),
+
+                    // Background layers (each independently draggable + deletable)
                     if (_backgroundItem1 != null)
                       _buildItemWidget(_backgroundItem1!, true),
-                    selectedFrame != null?
-                      Padding(
-                        padding: const EdgeInsets.all(0.0),
-                        child: CachedNetworkImage(
-                          height: MediaQuery.of(context).size.height,
-                          width: MediaQuery.of(context).size.width,
-                          fit: BoxFit.fitWidth,
-                          imageUrl: selectedFrame!,
-                          progressIndicatorBuilder:
-                              (context, url, downloadProgress) =>
-                          const Center(child: BirthdayLoadingRing()),
-                          errorWidget: (context, url, error) =>
-                          const Icon(Icons.error),
+                    if (_backgroundItem2 != null)
+                      _buildItemWidget(_backgroundItem2!, true),
+                    // if (_backgroundItem3 != null)
+                    //   _buildItemWidget(_backgroundItem3!, true),
+
+                    // Selected frame overlay (IgnorePointer so touches pass-through)
+                    if (selectedFrame != null)
+                      IgnorePointer(
+                        ignoring: true,
+                        child: Padding(
+                          padding: const EdgeInsets.all(0.0),
+                          child: CachedNetworkImage(
+                            height: _canvasSize?.height ??
+                                MediaQuery.of(context).size.height,
+                            width: _canvasSize?.width ??
+                                MediaQuery.of(context).size.width,
+                            fit: BoxFit.fitWidth,
+                            imageUrl: selectedFrame!,
+                            progressIndicatorBuilder: (context, url, downloadProgress) =>
+                            const Center(child: BirthdayLoadingRing()),
+                            errorWidget: (context, url, error) => const Icon(Icons.error),
+                          ),
                         ),
-                      ):Center(child: Text("Add Frame",style: TextStyle(color: AppColors.appWhiteColor),),),
+                      )
+                    else
+                      const Center(
+                        child: Text(
+                          "Add Frame",
+                          style: TextStyle(color: AppColors.appWhiteColor),
+                        ),
+                      ),
+
+                    // Foreground items (text/emoji/sticker)
                     ...items.map((e) => _buildItemWidget(e, false)).toList(),
                   ],
                 ),
               ),
             ),
           ),
+
+          // Bottom toolbar
           Container(
             width: double.infinity,
-            height: 100, // fixed height for bottom toolbar
+            height: 100,
             color: Colors.black87,
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
@@ -252,20 +267,17 @@ class _EditorScreenState extends State<EditorScreen> {
                   _buildToolbarItem(Icons.photo, Colors.pinkAccent, 'Add Image', _pickBackgroundImage),
                   _buildToolbarItem(Icons.camera_alt, Colors.blue, 'Camera', _captureBackgroundImage),
                   _buildToolbarItem(Icons.filter_frames, Colors.purple, 'Select Frame', _showFramePicker),
-                  _buildToolbarItem(Icons.text_fields, Colors.deepPurple, 'Add Text', () {
-                    _showTextEditor();
-                  }),
+                  _buildToolbarItem(Icons.text_fields, Colors.deepPurple, 'Add Text', _showTextEditor),
                   _buildToolbarItem(Icons.emoji_emotions, Colors.orange, 'Add Emoji', () {
-                      showPrettyEmojiPicker(
-                        context,
-                        emojis: emojis, // your List<String>
-                        onSelected: (e) {
-                          setState(() {
-                            items.add(EditableItem(type: ItemType.Emoji, value: e));
-                          });
-                        },
-                      );
-
+                    showPrettyEmojiPicker(
+                      context,
+                      emojis: emojis,
+                      onSelected: (e) {
+                        setState(() {
+                          items.add(EditableItem(type: ItemType.Emoji, value: e));
+                        });
+                      },
+                    );
                   }),
                   _buildToolbarItem(Icons.sticky_note_2, Colors.green, 'Add Sticker', () {
                     showPrettyStickerPicker(
@@ -289,7 +301,6 @@ class _EditorScreenState extends State<EditorScreen> {
     );
   }
 
-
   Widget _buildToolbarItem(IconData icon, Color color, String text, VoidCallback onTap) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4.0),
@@ -300,19 +311,23 @@ class _EditorScreenState extends State<EditorScreen> {
           children: [
             Icon(icon, color: color, size: 32),
             const SizedBox(height: 4),
-            Text(text, style: const TextStyle(fontSize: 12,color: AppColors.appWhiteColor)),
+            Text(text, style: const TextStyle(fontSize: 12, color: AppColors.appWhiteColor)),
           ],
         ),
       ),
     );
   }
 
-
-
   Widget _buildItemWidget(EditableItem e, bool isBackground) {
-    final screen = MediaQuery.of(context).size;
+    final Size fallback = MediaQuery.of(context).size;
+    final Size canvas = _canvasSize ?? fallback;
+
     final theme = Theme.of(context);
-    final bool isActive = !isBackground && identical(_activeItem, e);
+
+    // Active states (foreground vs background)
+    final bool isFgActive = !isBackground && identical(_activeItem, e);
+    final bool isBgActive = isBackground && identical(_activeBgItem, e);
+    final bool showActive = isFgActive || isBgActive;
 
     Widget content;
     switch (e.type) {
@@ -338,13 +353,13 @@ class _EditorScreenState extends State<EditorScreen> {
         content = Image.file(
           File(e.value),
           fit: BoxFit.fitWidth,
-          height: screen.height,
-          width: screen.width,
+          height: canvas.height,
+          width: canvas.width,
         );
         break;
     }
 
-    // Selectable frame + delete button overlay
+    // Select border + delete icon for BOTH foreground and background when selected
     final framed = Stack(
       clipBehavior: Clip.none,
       children: [
@@ -353,56 +368,63 @@ class _EditorScreenState extends State<EditorScreen> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(6),
             border: Border.all(
-              color: isActive
-                  ? AppColors.appPrimaryPink
-                  : Colors.transparent,
-              width: 2,
+              color: showActive ? AppColors.appPrimaryPink : Colors.transparent,
+              width: 1,
             ),
           ),
           child: content,
         ),
-        if (isActive)     Positioned(
-          top: -14,
-          right: -14,
-          child: Transform.rotate(
-            angle: -e.rotation, // keep upright
-            child: Material(
-              color: Colors.transparent,
-              shape: const CircleBorder(),
-              child: InkWell(
-                customBorder: const CircleBorder(),
-                onTap: () {
-                  setState(() {
-                    items.removeWhere((it) => identical(it, e)); // exact instance
-                    if (identical(_activeItem, e)) _activeItem = null;
-                  });
-                },
-                child: Ink(
-                  width: 30,  // bigger hit area
-                  height: 30,
-                  decoration: ShapeDecoration(
-                    color: theme.colorScheme.error,
-                    shape: const CircleBorder(),
-                    shadows: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.20),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
+        if (showActive)
+          Positioned(
+            top: -14,
+            right: -14,
+            child: Transform.rotate(
+              angle: -e.rotation, // keep upright
+              child: Material(
+                color: Colors.transparent,
+                shape: const CircleBorder(),
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: () {
+                    setState(() {
+                      if (isBackground) {
+                        // Delete correct background slot
+                        if (identical(_backgroundItem1, e)) _backgroundItem1 = null;
+                        else if (identical(_backgroundItem2, e)) _backgroundItem2 = null;
+                        // else if (identical(_backgroundItem3, e)) _backgroundItem3 = null;
+                        if (identical(_activeBgItem, e)) _activeBgItem = null;
+                      } else {
+                        items.removeWhere((it) => identical(it, e));
+                        if (identical(_activeItem, e)) _activeItem = null;
+                      }
+                    });
+                  },
+                  child: Ink(
+                    width: 30,
+                    height: 30,
+                    decoration: ShapeDecoration(
+                      color: theme.colorScheme.error,
+                      shape: const CircleBorder(),
+                      shadows: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.20),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(Icons.delete_rounded, size: 18, color: Colors.white),
                   ),
-                  child: const Icon(Icons.delete_rounded, size: 18, color: Colors.white),
                 ),
               ),
             ),
           ),
-        ),
       ],
     );
 
     return Positioned(
-      top: e.position.dy * screen.height,
-      left: e.position.dx * screen.width,
+      top: e.position.dy * canvas.height,
+      left: e.position.dx * canvas.width,
       child: Transform.scale(
         scale: e.scale,
         child: Transform.rotate(
@@ -412,8 +434,17 @@ class _EditorScreenState extends State<EditorScreen> {
               if (_inAction) return;
               _inAction = true;
               _pointerDownOnItem = true;
-              _activeItem = isBackground ? null : e;
-              _initPos = details.position;
+
+              // Select item for gesture
+              if (isBackground) {
+                _activeBgItem = e;
+                _activeItem = null;
+              } else {
+                _activeItem = e;
+                _activeBgItem = null;
+              }
+
+              _initLocal = _toLocal(details.position);
               _currentPos = e.position;
               _currentScale = e.scale;
               _currentRotation = e.rotation;
@@ -433,66 +464,97 @@ class _EditorScreenState extends State<EditorScreen> {
       ),
     );
   }
-  Future<void> _pickBackgroundImage() async {
 
+  Future<void> _pickBackgroundImage() async {
     final picker = ImagePicker();
     final picked = await picker.pickImage(source: ImageSource.gallery);
     if (picked != null) {
       setState(() {
-        _backgroundItem = EditableItem(
-          type: ItemType.Image,
-          value: picked.path,
-          position: const Offset(0.0, 0.0),
-          scale: 1.0,
-          rotation: 0.0,
-        );
-        // if(frameType==0){
-        //   frameType=1;
-        //    }
-        // if(frameType==1){
-        //   _backgroundItem1    = EditableItem(
-        //     type: ItemType.Image,
-        //     value: picked.path,
-        //     position: const Offset(0.0, 0.0),
-        //     scale: 1.0,
-        //     rotation: 0.0,
-        //   );
-        // }
+        if(frameType==0){
+          print("singleFrame");
+          _backgroundItem1 = EditableItem(
+            type: ItemType.Image,
+            value: picked.path,
+            position: const Offset(0.0, 0.0),
+            scale: 1.0,
+            rotation: 0.0,
+          );
+        }else if (frameType == 1) {
+          _backgroundItem1 = EditableItem(
+            type: ItemType.Image,
+            value: picked.path,
+            position: const Offset(0.0, 0.0),
+            scale: 1.0,
+            rotation: 0.0,
+          );
+          frameType = 2;
+        } else if (frameType == 2) {
+          _backgroundItem2 = EditableItem(
+            type: ItemType.Image,
+            value: picked.path,
+            position: const Offset(0.0, 0.0),
+            scale: 1.0,
+            rotation: 0.0,
+          );
+          frameType = 1;
+        } else {
+          // _backgroundItem3 = EditableItem(
+          //   type: ItemType.Image,
+          //   value: picked.path,
+          //   position: const Offset(0.0, 0.0),
+          //   scale: 1.0,
+          //   rotation: 0.0,
+          // );
+          // frameType = 1;
+        }
       });
-      // Navigator.pop(context);
     }
   }
-
 
   Future<void> _loadFrameImage() async {
-    print("Frame Url${widget.frame?.frameImage}");
     final args = ModalRoute.of(context)?.settings.arguments as FrameData?;
-      print("Frame Url${widget.frame?.frameImage}");
-      setState(() => selectedFrame = args?.frameImage);
+    setState(() => selectedFrame = args?.frameImage ?? widget.frame?.frameImage);
   }
 
-
-  // Background from camera
   Future<void> _captureBackgroundImage() async {
     final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.camera,preferredCameraDevice: CameraDevice.front);
+    final picked = await picker.pickImage(
+      source: ImageSource.camera,
+      preferredCameraDevice: CameraDevice.front,
+    );
     if (picked != null) {
       setState(() {
-        _backgroundItem = EditableItem(
-          type: ItemType.Image,
-          value: picked.path,
-          position: const Offset(0.0, 0.0),
-          scale: 1.0,
-          rotation: 0.0,
-        );
+        if (frameType == 1) {
+          _backgroundItem1 = EditableItem(
+            type: ItemType.Image,
+            value: picked.path,
+            position: const Offset(0.0, 0.0),
+            scale: 1.0,
+            rotation: 0.0,
+          );
+          frameType = 2;
+        } else if (frameType == 2) {
+          _backgroundItem2 = EditableItem(
+            type: ItemType.Image,
+            value: picked.path,
+            position: const Offset(0.0, 0.0),
+            scale: 1.0,
+            rotation: 0.0,
+          );
+          frameType = 1;
+        } else {
+          // _backgroundItem3 = EditableItem(
+          //   type: ItemType.Image,
+          //   value: picked.path,
+          //   position: const Offset(0.0, 0.0),
+          //   scale: 1.0,
+          //   rotation: 0.0,
+          // );
+          // frameType = 1;
+        }
       });
-      // Navigator.pop(context);
     }
   }
-
-
-
-  //// frame picker
 
   void _showFramePicker() {
     showModalBottomSheet(
@@ -516,14 +578,15 @@ class _EditorScreenState extends State<EditorScreen> {
               ],
             ),
             child: SizedBox(
-              height: 230, // small bottom sheet
+              height: 230,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const SizedBox(height: 8),
                   Center(
                     child: Container(
-                      width: 38, height: 4,
+                      width: 38,
+                      height: 4,
                       decoration: BoxDecoration(
                         color: theme.colorScheme.outlineVariant,
                         borderRadius: BorderRadius.circular(2),
@@ -556,7 +619,6 @@ class _EditorScreenState extends State<EditorScreen> {
                         final raw = provider.frameResponse?.data;
                         final isLoading = raw == null;
 
-                        // Extract URLs safely from API model
                         final frameUrls = (raw ?? [])
                             .map<String?>((f) {
                           try {
@@ -588,10 +650,8 @@ class _EditorScreenState extends State<EditorScreen> {
                           items: frameUrls,
                           tileSize: 120,
                           onTap: (url) {
-                            // SAME LOGIC: do not change
                             setState(() => selectedFrame = url);
-                            Navigator.pop(ctx);       // close sheet
-                            // Navigator.pop(context);   // go back (as in your code)
+                            Navigator.pop(ctx);
                           },
                         );
                       },
@@ -605,41 +665,6 @@ class _EditorScreenState extends State<EditorScreen> {
       },
     );
   }
-
-
-
-
-
-
-  // Frame picker
-  // void _showFramePicker() {
-  //   showDialog(
-  //     context: context,
-  //     builder: (ctx) {
-  //       return AlertDialog(
-  //         title: const Text('Select Frame'),
-  //         content: SingleChildScrollView(
-  //           child: Wrap(
-  //             children: frames.map((url) {
-  //               return GestureDetector(
-  //                 onTap: () {
-  //                   setState(() => selectedFrame = url);
-  //                   Navigator.pop(ctx);
-  //                   Navigator.pop(context);
-  //                 },
-  //                 child: Padding(
-  //                   padding: const EdgeInsets.all(8.0),
-  //                   child: Image.network(url, height: 120, width: 120),
-  //                 ),
-  //               );
-  //             }).toList(),
-  //           ),
-  //         ),
-  //       );
-  //     },
-  //   );
-  // }
-
 
   void _showTextEditor() {
     final controller = TextEditingController();
@@ -670,7 +695,6 @@ class _EditorScreenState extends State<EditorScreen> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          // Drag handle
                           Container(
                             width: 42,
                             height: 5,
@@ -680,8 +704,6 @@ class _EditorScreenState extends State<EditorScreen> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-
-                          // Live preview
                           Container(
                             width: double.infinity,
                             padding: const EdgeInsets.all(12),
@@ -702,10 +724,7 @@ class _EditorScreenState extends State<EditorScreen> {
                               ),
                             ),
                           ),
-
                           const SizedBox(height: 12),
-
-                          // Text field
                           TextField(
                             controller: controller,
                             maxLines: 2,
@@ -726,13 +745,9 @@ class _EditorScreenState extends State<EditorScreen> {
                             ),
                             onChanged: (_) => setModalState(() {}),
                           ),
-
                           const SizedBox(height: 12),
-
-                          // Color, font dropdown, bold/italic
                           Row(
                             children: [
-                              // Color picker button
                               GestureDetector(
                                 onTap: () {
                                   showDialog(
@@ -790,10 +805,7 @@ class _EditorScreenState extends State<EditorScreen> {
                                   ),
                                 ),
                               ),
-
                               const SizedBox(width: 12),
-
-                              // Font dropdown with preview
                               Expanded(
                                 child: DropdownButtonHideUnderline(
                                   child: DropdownButton<String>(
@@ -814,10 +826,7 @@ class _EditorScreenState extends State<EditorScreen> {
                                   ),
                                 ),
                               ),
-
                               const SizedBox(width: 8),
-
-                              // Bold
                               _MiniToggle(
                                 icon: Icons.format_bold,
                                 isOn: selectedWeight == FontWeight.w700,
@@ -825,10 +834,7 @@ class _EditorScreenState extends State<EditorScreen> {
                                   selectedWeight = selectedWeight == FontWeight.w700 ? FontWeight.w500 : FontWeight.w700;
                                 }),
                               ),
-
                               const SizedBox(width: 6),
-
-                              // Italic
                               _MiniToggle(
                                 icon: Icons.format_italic,
                                 isOn: selectedStyle == FontStyle.italic,
@@ -838,10 +844,7 @@ class _EditorScreenState extends State<EditorScreen> {
                               ),
                             ],
                           ),
-
                           const SizedBox(height: 6),
-
-                          // Size slider
                           Row(
                             children: [
                               const Icon(Icons.text_fields, color: Colors.white70, size: 18),
@@ -859,10 +862,7 @@ class _EditorScreenState extends State<EditorScreen> {
                               ),
                             ],
                           ),
-
                           const SizedBox(height: 8),
-
-                          // Actions
                           Row(
                             children: [
                               TextButton(
@@ -912,7 +912,6 @@ class _EditorScreenState extends State<EditorScreen> {
     );
   }
 
-
   Future<void> showPrettyEmojiPicker(
       BuildContext context, {
         required List<String> emojis,
@@ -955,8 +954,6 @@ class _EditorScreenState extends State<EditorScreen> {
     );
   }
 
-
-// Call this instead of your old _showStickerPicker()
   Future<void> showPrettyStickerPicker(
       BuildContext context, {
         required ValueChanged<String> onSelected,
@@ -1022,8 +1019,7 @@ class _EditorScreenState extends State<EditorScreen> {
   Future<void> _saveToGallery(BuildContext context) async {
     // Permissions
     if (Platform.isAndroid) {
-      // Android < 13 ke liye helpful. Android 13+ me optional hai.
-      await Permission.storage.request();
+      await Permission.storage.request(); // Android <= 12
     } else if (Platform.isIOS) {
       await Permission.photosAddOnly.request();
     }
@@ -1031,6 +1027,7 @@ class _EditorScreenState extends State<EditorScreen> {
     final bytes = await screenshotController.capture(pixelRatio: 2.0);
     if (bytes == null) return;
 
+    // image_gallery_saver_plus v4 API
     final result = await igs.ImageGallerySaverPlus.saveImage(
       bytes,
       quality: 100,
@@ -1055,7 +1052,6 @@ class _EditorScreenState extends State<EditorScreen> {
     if (!context.mounted) return;
 
     if (ok) {
-      // Preview bottom sheet with Share + Go Home
       await _showSavedBottomSheet(context, bytes, savedPath: savedPath);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1098,33 +1094,27 @@ class _EditorScreenState extends State<EditorScreen> {
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 12),
-
-              // Image Preview
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: AspectRatio(
-                  aspectRatio: 3 / 4, // apne UI ke hisaab se change kar sakte ho
+                  aspectRatio: 3 / 4,
                   child: Image.memory(
                     bytes,
                     fit: BoxFit.contain,
                   ),
                 ),
               ),
-
               const SizedBox(height: 12),
-
-              // Buttons Row
               Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton.icon(style: ButtonStyle(overlayColor: WidgetStatePropertyAll(Colors.red)),
+                    child: OutlinedButton.icon(
+                      style: const ButtonStyle(
+                        overlayColor: MaterialStatePropertyAll(Colors.red),
+                      ),
                       onPressed: () {
-                        // Bottom sheet close + Home par jaana
-                        Navigator.of(context).pop(); // close sheet
-                        // Option A: first route (assumes first route is Home)
+                        Navigator.of(context).pop();
                         Navigator.of(context).popUntil((route) => route.isFirst);
-
-                        // Option B (agar aapke paas named route hai):
                         Navigator.pushNamed(context, AppRoutesName.homeScreen);
                       },
                       icon: const Icon(Icons.home_rounded),
@@ -1156,28 +1146,15 @@ class _EditorScreenState extends State<EditorScreen> {
       }) async {
     try {
       XFile? xfile;
-
-      // Agar valid file path mil gaya ho to use kar lo
       if (savedPath != null) {
         final normalized = _normalizePath(savedPath);
         final f = File(normalized);
         if (await f.exists()) {
-          xfile = XFile(
-            f.path,
-            mimeType: 'image/png',
-            name: 'image.png',
-          );
+          xfile = XFile(f.path, mimeType: 'image/png', name: 'image.png');
         }
       }
-
-      // Fallback: bytes ko temp file me likh ke share karo (reliable across platforms)
       xfile ??= await _tempXFileFromBytes(bytes);
-
-      await Share.shareXFiles(
-        [xfile],
-        text: 'Check this out 🎉',
-        subject: 'My Image',
-      );
+      await Share.shareXFiles([xfile], text: 'Check this out 🎉', subject: 'My Image');
     } catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1187,7 +1164,6 @@ class _EditorScreenState extends State<EditorScreen> {
   }
 
   String _normalizePath(String p) {
-    // iOS/Android kabhi kabhi file:// prefix dete hain
     if (p.startsWith('file://')) {
       return Uri.parse(p).toFilePath();
     }
@@ -1201,11 +1177,7 @@ class _EditorScreenState extends State<EditorScreen> {
     await file.writeAsBytes(bytes, flush: true);
     return XFile(file.path, mimeType: 'image/png', name: 'image.png');
   }
-
-
-
 }
-
 
 class _EmptyState extends StatelessWidget {
   const _EmptyState({Key? key, required this.message}) : super(key: key);
@@ -1291,8 +1263,6 @@ class _EmojiTileState extends State<_EmojiTile> {
   }
 }
 
-
-
 class _MiniToggle extends StatelessWidget {
   const _MiniToggle({
     Key? key,
@@ -1323,10 +1293,6 @@ class _MiniToggle extends StatelessWidget {
     );
   }
 }
-
-
-
-
 
 class _EmojiPickerSheet extends StatefulWidget {
   const _EmojiPickerSheet({
@@ -1439,27 +1405,6 @@ class _EmojiPickerSheetState extends State<_EmojiPickerSheet> {
             ],
           ),
         ),
-        // Padding(
-        //   padding: const EdgeInsets.symmetric(horizontal: 16.0),
-        //   child: TextField(
-        //     controller: _search,
-        //     onChanged: (_) => setState(() {}),
-        //     decoration: InputDecoration(
-        //       hintText: 'Search emoji',
-        //       prefixIcon: const Icon(Icons.search_rounded),
-        //       filled: true,
-        //       fillColor: surfaceVariant,
-        //       isDense: true,
-        //       contentPadding:
-        //       const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-        //       border: OutlineInputBorder(
-        //         borderRadius: BorderRadius.circular(12),
-        //         borderSide: BorderSide.none,
-        //       ),
-        //     ),
-        //   ),
-        // ),
-        // const SizedBox(height: 8),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12.0),
           child: SingleChildScrollView(
@@ -1542,9 +1487,6 @@ class _EmojiPickerSheetState extends State<_EmojiPickerSheet> {
   }
 }
 
-
-/// sticker
-
 class _LoadingGrid extends StatelessWidget {
   const _LoadingGrid({Key? key, required this.background}) : super(key: key);
   final Color background;
@@ -1582,7 +1524,6 @@ class _LoadingGrid extends StatelessWidget {
     );
   }
 }
-
 
 class _StickerPreviewDialog extends StatelessWidget {
   const _StickerPreviewDialog({Key? key, required this.url}) : super(key: key);
@@ -1729,7 +1670,6 @@ class _StickerTileState extends State<_StickerTile> {
                       child: SizedBox(
                         height: 28,
                         width: 28,
-                        // Use your existing loader, or swap with CircularProgressIndicator
                         child: BirthdayLoadingRing(),
                       ),
                     );
@@ -1850,27 +1790,7 @@ class _StickerPickerSheetState extends State<_StickerPickerSheet> {
             ],
           ),
         ),
-        // Padding(
-        //   padding: const EdgeInsets.symmetric(horizontal: 16.0),
-        //   child: TextField(
-        //     controller: _search,
-        //     onChanged: (_) => setState(() {}),
-        //     decoration: InputDecoration(
-        //       hintText: 'Search stickers',
-        //       prefixIcon: const Icon(Icons.search_rounded),
-        //       filled: true,
-        //       fillColor: surfaceVariant,
-        //       isDense: true,
-        //       contentPadding:
-        //       const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-        //       border: OutlineInputBorder(
-        //         borderRadius: BorderRadius.circular(12),
-        //         borderSide: BorderSide.none,
-        //       ),
-        //     ),
-        //   ),
-        // ),
-
+        // Tabs hint (optional search removed for brevity)
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12.0),
           child: SingleChildScrollView(
@@ -1919,7 +1839,7 @@ class _StickerPickerSheetState extends State<_StickerPickerSheet> {
                     ? (_tabIndex == 1
                     ? 'No recent stickers yet'
                     : 'No stickers found')
-                    : 'No matches for “${_search.text}”',
+                    : 'No matches',
               )
                   : LayoutBuilder(
                 builder: (ctx, constraints) {
@@ -1959,8 +1879,6 @@ class _StickerPickerSheetState extends State<_StickerPickerSheet> {
   }
 }
 
-
-/// frame select
 class _EmptySmall extends StatelessWidget {
   const _EmptySmall({Key? key, required this.message}) : super(key: key);
   final String message;
@@ -2187,27 +2105,27 @@ class _FrameHorizontalList extends StatelessWidget {
   }
 }
 
-
-///////////////////////
 enum ItemType { Text, Emoji, Sticker, Image }
 
-
 class EditableItem {
-   double? fontSize;
-   FontWeight? fontWeight;
-   FontStyle? fontStyle;
+  double? fontSize;
+  FontWeight? fontWeight;
+  FontStyle? fontStyle;
+
+  // Normalized position (0..1)
   Offset position;
   double scale;
   double rotation;
+
   ItemType type;
   String value;
   Color color;
   String? fontFamily;
 
   EditableItem({
-     this.fontSize,
-     this.fontWeight,
-     this.fontStyle,
+    this.fontSize,
+    this.fontWeight,
+    this.fontStyle,
     this.position = const Offset(0.4, 0.4),
     this.scale = 1.0,
     this.rotation = 0.0,
@@ -2216,5 +2134,30 @@ class EditableItem {
     this.color = Colors.white,
     this.fontFamily,
   });
-}
 
+  EditableItem copyWith({
+    double? fontSize,
+    FontWeight? fontWeight,
+    FontStyle? fontStyle,
+    Offset? position,
+    double? scale,
+    double? rotation,
+    ItemType? type,
+    String? value,
+    Color? color,
+    String? fontFamily,
+  }) {
+    return EditableItem(
+      fontSize: fontSize ?? this.fontSize,
+      fontWeight: fontWeight ?? this.fontWeight,
+      fontStyle: fontStyle ?? this.fontStyle,
+      position: position ?? this.position,
+      scale: scale ?? this.scale,
+      rotation: rotation ?? this.rotation,
+      type: type ?? this.type,
+      value: value ?? this.value,
+      color: color ?? this.color,
+      fontFamily: fontFamily ?? this.fontFamily,
+    );
+  }
+}

@@ -10,25 +10,23 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Scaffold(
-        backgroundColor: AppColors.backgroundColor,
-        body: Column(
-          children: [
-            // Consumer<ThemeProvider>(
-            //   builder: (context, themeProvider, child) {
-            //     return SwitchListTile(
-            //       title: Text(themeProvider.isDarkMode ? 'Dark Mode' : 'Light Mode'),
-            //       value: themeProvider.isDarkMode,
-            //       onChanged: (value) {
-            //         themeProvider.toggleTheme(value);
-            //       },
-            //     );
-            //   },
-            // ),
-            Expanded(child: CategoryScreen())
-              ],
-        ),
+    return Scaffold(
+      backgroundColor: AppColors.backgroundColor,
+      body: Column(
+        children: [
+          // Consumer<ThemeProvider>(
+          //   builder: (context, themeProvider, child) {
+          //     return SwitchListTile(
+          //       title: Text(themeProvider.isDarkMode ? 'Dark Mode' : 'Light Mode'),
+          //       value: themeProvider.isDarkMode,
+          //       onChanged: (value) {
+          //         themeProvider.toggleTheme(value);
+          //       },
+          //     );
+          //   },
+          // ),
+          Expanded(child: CategoryScreen())
+            ],
       ),
     );
   }

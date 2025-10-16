@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:birthday_photo_maker/constant/color/app_colors.dart';
 import 'package:birthday_photo_maker/views/confetti_splash_screen/confetti_splash_screen.dart';
+import 'package:birthday_photo_maker/views/splash_screen/flower.dart';
 import 'package:flutter/material.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -38,6 +39,14 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _start() async {
+    ConfettiCenterOverlay.show(
+      context,
+      duration: const Duration(seconds: 3),
+      particles: 80,      // aur zyada confetti
+      emission: 0.18,      // aur dense
+      gravity: 0.30,       // thoda fast fall
+      topShower: false,    // sirf center se
+    );
     final tasks = <Future>[];
     tasks.add(Future.delayed(widget.minDisplayTime));
     if (widget.onInit != null) tasks.add(widget.onInit!());
@@ -188,7 +197,7 @@ class _SplashScreenState extends State<SplashScreen> {
                 ],
               ),
             ),
-            // ConfettiExamplePage()
+
           ],
         ),
       ),

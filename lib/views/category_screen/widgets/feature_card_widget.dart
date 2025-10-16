@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:birthday_photo_maker/constant/color/app_colors.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
@@ -18,10 +19,13 @@ class FeatureCard extends StatelessWidget {
   final EdgeInsetsGeometry padding;
   final bool showSparkles;         // decorative sparkles
   final bool showGloss;
+  final IconData? iconData;
+
 
 
   const FeatureCard({
     super.key,
+    this.iconData,
     required this.title,
     required this.color1,
     required this.color2,
@@ -152,7 +156,7 @@ class FeatureCard extends StatelessWidget {
                             progressIndicatorBuilder: (context, url, downloadProgress) =>
                                 Center(child:  BirthdayLoadingRing()),
                             errorWidget: (context, url, error) => Icon(Icons.error),
-                          ):Icon(Icons.insert_photo_outlined),
+                          ):Icon(iconData,color: AppColors.appWhiteColor,),
                         ),
                       ),
                     ),

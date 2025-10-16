@@ -51,25 +51,25 @@ class _CategoryScreenState extends State<CategoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Scaffold(
-        key: _scaffoldKey, // GlobalKey add kiya
-        drawerEnableOpenDragGesture: true,
-        drawer: const BirthdayDrawer(),
-        backgroundColor: AppColors.appWhiteColor,
-        appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(183),
-          child: BirthdayAppBar(
-            onGiftTap: () {
-              print("open Drawer");
-              // GlobalKey se drawer open karo
-              _scaffoldKey.currentState?.openDrawer();
-            },
-            title: 'Happy Birthday, Sam',
-            subtitle: 'Wishing you a day full of joy and surprises! 🎁',
-          ),
+    return Scaffold(
+      key: _scaffoldKey, // GlobalKey add kiya
+      drawerEnableOpenDragGesture: true,
+      drawer: const BirthdayDrawer(),
+      backgroundColor: AppColors.appWhiteColor,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(183),
+        child: BirthdayAppBar(
+          onGiftTap: () {
+            print("open Drawer");
+            // GlobalKey se drawer open karo
+            _scaffoldKey.currentState?.openDrawer();
+          },
+          title: 'Happy Birthday, Sam',
+          subtitle: 'Wishing you a day full of joy and surprises! 🎁',
         ),
-        body: SingleChildScrollView(
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.start,
@@ -90,6 +90,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                       color1: AppColors.cardColor1,
                       color2: AppColors.cardColor1,
                       icon: null,
+                      iconData: Icons.ac_unit,
 
                     ),
                   ),
@@ -103,6 +104,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                        color1: AppColors.cardColor1,
                        color2: AppColors.cardColor1,
                       icon: null,
+                       iconData: Icons.celebration,
 
                                        ),
                    ),
@@ -116,6 +118,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                        color1: AppColors.cardColor1,
                        color2: AppColors.cardColor1,
                       icon: null,
+                       iconData: Icons.ac_unit,
 
                                        ),
                    ),
@@ -129,7 +132,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                        color1: AppColors.cardColor1,
                        color2: AppColors.cardColor1,
                       icon: null,
-
+                       iconData: Icons.ac_unit,
                                        ),
                    ),
                 ],
