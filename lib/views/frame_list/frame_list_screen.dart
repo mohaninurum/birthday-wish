@@ -78,8 +78,8 @@ class _FrameListScreenState extends State<FrameListScreen> {
                             Center(
                               child: Text(
                                 tab == FrameTab.single
-                                    ? "No single frames"
-                                    : "No multiple frames",
+                                    ? "No data found"
+                                    : "No data found",
                                 style: const TextStyle(
                                   color: AppColors.appBlackColor,
                                   fontSize: 14,

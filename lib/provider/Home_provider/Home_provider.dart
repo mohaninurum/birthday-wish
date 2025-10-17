@@ -61,9 +61,11 @@ class HomeProvider extends ChangeNotifier {
               print("Response: $data");
               categoryFrameResponse = FrameResponse.fromJson(data);
               isLoadingframe = false;
+              statusCode='200';
               notifyListeners();
             }else{
               isLoading = false;
+              statusCode="404";
               notifyListeners();
             }
           },
@@ -83,9 +85,11 @@ class HomeProvider extends ChangeNotifier {
               print("Category: $data");
               categoryResponseModel = CategoryResponse.fromJson(data);
               isLoading = false;
+              statusCode='200';
               notifyListeners();
             }else{
               isLoading = false;
+              statusCode="404";
               notifyListeners();
             }
           },
@@ -103,9 +107,11 @@ class HomeProvider extends ChangeNotifier {
               print("Category: $data");
               wishesCategoryResponse = WishesCategoryResponse.fromJson(data);
               isLoading = false;
+              statusCode='200';
               notifyListeners();
             }else{
               isLoading = false;
+              statusCode="404";
               notifyListeners();
             }
           },
@@ -124,9 +130,11 @@ class HomeProvider extends ChangeNotifier {
               print("Category: $data");
               wishesCategoryResponse = WishesCategoryResponse.fromJson(data);
               isLoading = false;
+              statusCode='200';
               notifyListeners();
             }else{
               isLoading = false;
+              statusCode="404";
               notifyListeners();
             }
           },
@@ -153,12 +161,10 @@ class HomeProvider extends ChangeNotifier {
               print("Category: $data");
               wishesSubCategoryListModel = WishesSubCategoryListModel.fromJson(data);
               isLoading = false;
+              statusCode='200';
               notifyListeners();
             }else{
-              if(data["status"]==false){
-                statusCode="404";
-                print(">>>>>statusCode>>>>>${statusCode}");
-              }
+              statusCode="404";
               isLoading = false;
               notifyListeners();
             }
@@ -170,8 +176,8 @@ class HomeProvider extends ChangeNotifier {
     isLoading=true;
     wisheSubCategoryID=id;
     }
-
-  wishesDetailsSubCategoryListByID() async {    statusCode='200';
+  wishesDetailsSubCategoryListByID() async {
+    statusCode='200';
     isLoading=true;
     notifyListeners();
     final response = await apiService.getGetApiResponse("${Urls.wishesWishesDetailsListByID}$wisheSubCategoryID", {});
@@ -182,9 +188,11 @@ class HomeProvider extends ChangeNotifier {
               print("Category: $data");
               wishesDetailsListModel = WishesDetailsListModel.fromJson(data);
               isLoading = false;
+              statusCode='200';
               notifyListeners();
             }else{
               isLoading = false;
+              statusCode="404";
               notifyListeners();
             }
           },

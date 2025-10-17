@@ -1024,7 +1024,7 @@ class _EditorScreenState extends State<EditorScreen> {
       await Permission.photosAddOnly.request();
     }
 
-    final bytes = await screenshotController.capture(pixelRatio: 2.0);
+    final bytes = await screenshotController.capture(pixelRatio: 3.0);
     if (bytes == null) return;
 
     // image_gallery_saver_plus v4 API

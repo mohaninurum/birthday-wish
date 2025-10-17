@@ -88,7 +88,8 @@ class BirthdayAppBar extends StatelessWidget implements PreferredSizeWidget{
                                 ),
                               ),
                             ),
-                            _glassIconButton(Icons.settings, onTap: onSettingsTap),
+                            SizedBox(width: 20,)
+                            // _glassIconButton(Icons.settings, onTap: onSettingsTap),
                           ],
                         ),
 

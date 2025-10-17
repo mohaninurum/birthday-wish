@@ -78,8 +78,12 @@ class _wishesDetailsScreenState extends State<wishesDetailsScreen> {
           final list = provider.wishesDetailsListModel?.data ?? []; // Or provider.wishesSubCategoryList
 
           if (list.isEmpty) {
-            return const Center(child: Text("No wishes found", style: TextStyle(color: Colors.white70)));
+            return const Center(child: Text("No wishes found", style: TextStyle(color: AppColors.appBlackColor)));
           }
+          if (provider.statusCode=="404") {
+            return const Center(child: Text("No wishes found"));
+          }
+
 
           return ListView.separated(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
