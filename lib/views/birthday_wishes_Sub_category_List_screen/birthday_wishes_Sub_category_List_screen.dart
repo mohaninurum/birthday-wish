@@ -6,38 +6,23 @@ import '../../routes/app_routes_name.dart';
 import '../../widgets/BirthdayLoadingRing.dart';
 
 class BirthdayWishesSubCategoryListScreen extends StatefulWidget {
-  BirthdayWishesSubCategoryListScreen({Key? key}) : super(key: key);
+  const BirthdayWishesSubCategoryListScreen({Key? key}) : super(key: key);
 
   @override
-  State<BirthdayWishesSubCategoryListScreen> createState() => _BirthdayWishesSubCategoryListScreenState();
+  State<BirthdayWishesSubCategoryListScreen> createState() =>
+      _BirthdayWishesSubCategoryListScreenState();
 }
 
-class _BirthdayWishesSubCategoryListScreenState extends State<BirthdayWishesSubCategoryListScreen> {
-  // GlobalKey for Scaffold - drawer open karne ke liye
+class _BirthdayWishesSubCategoryListScreenState
+    extends State<BirthdayWishesSubCategoryListScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-
-  final birthdayGradient = const LinearGradient(
-    colors: [
-      Color(0xFFFF6CAB),
-      Color(0xFFFF8E53),
-      Color(0xFF7367F0),
-    ],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-
-  final myCreationGradient = LinearGradient(
-    colors: [Color(0xFF36D1DC), Color(0xFF5B86E5)],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
 
   @override
   void initState() {
-    WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<HomeProvider>().getWishesSubCategoryList();
     });
-    super.initState();
   }
 
   @override
@@ -46,7 +31,7 @@ class _BirthdayWishesSubCategoryListScreenState extends State<BirthdayWishesSubC
       key: _scaffoldKey,
       backgroundColor: AppColors.appWhiteColor,
       appBar: AppBar(
-        title: const Text(" Wishes List"),
+        title: const Text("Wishes List"),
         backgroundColor: AppColors.cardColor1,
       ),
       body: Consumer<HomeProvider>(
@@ -62,22 +47,26 @@ class _BirthdayWishesSubCategoryListScreenState extends State<BirthdayWishesSubC
 
           final categoryList = provider.wishesSubCategoryListModel?.data ?? [];
 
-          if (provider.statusCode=="404") {
+          if (provider.statusCode == "404" || categoryList.isEmpty) {
             return const Center(child: Text("No Data found"));
           }
 
-          return ListView.separated(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-            physics: const BouncingScrollPhysics(),
+          return ReorderableListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             itemCount: categoryList.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            onReorder: (oldIndex, newIndex) {
+              context
+                  .read<HomeProvider>()
+                  .reorderWishesSubCategoryList(oldIndex, newIndex);
+            },
             itemBuilder: (context, index) {
-              final categoryItem = categoryList[index];
-
+              final item = categoryList[index];
               return InkWell(
+                key: ValueKey(item.subCategoryIdPk), // unique key is required
                 onTap: () {
-                  debugPrint("category tapped: ${categoryItem.categoryName}");
-                  context.read<HomeProvider>().setWishesSubCategoryListByID(categoryItem.id.toString());
+                  context
+                      .read<HomeProvider>()
+                      .setWishesSubCategoryListByID(item.subCategoryIdPk.toString());
                   Navigator.pushNamed(
                     context,
                     AppRoutesName.wishesDetailsScreen,
@@ -85,19 +74,40 @@ class _BirthdayWishesSubCategoryListScreenState extends State<BirthdayWishesSubC
                 },
                 borderRadius: BorderRadius.circular(12),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
                   decoration: BoxDecoration(
                     color: AppColors.cardColor1,
                     borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.2),
+                        blurRadius: 6,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
                   ),
-                  child: Text(
-                    categoryItem.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.appWhiteColor, // ensure contrast with cardColor1
-                    ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          item.subCategoryName ?? "Unnamed",
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style:
+                          Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.appWhiteColor,
+                          ),
+                        ),
+                      ),
+                      const Icon(
+                        Icons.drag_handle,
+                        color: Colors.white70,
+                      ),
+                    ],
                   ),
                 ),
               );
@@ -108,5 +118,3 @@ class _BirthdayWishesSubCategoryListScreenState extends State<BirthdayWishesSubC
     );
   }
 }
-
-

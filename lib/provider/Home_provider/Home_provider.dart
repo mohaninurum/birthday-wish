@@ -4,6 +4,7 @@ import '../../constant/uris.dart';
 import '../../core/networking/network_api_service.dart';
 import '../../model/WishesSubCategoryListModel/all_wishes_category_list_model.dart';
 import '../../model/birthday_catogory_model/wishes_category_mdoel.dart';
+import '../../model/cake_frame/cake_frame.dart';
 import '../../model/category_list_Model/category_list_model.dart';
 import '../../model/frame_list_model/frame_list_model.dart';
 import '../../model/wishesSub_Category_ListByID/wishesSub_category_listByID.dart';
@@ -18,12 +19,15 @@ class HomeProvider extends ChangeNotifier {
   WishesSubCategoryListModel? wishesSubCategoryListModel;
   WishessubCategoryListbyidModel? wishessubCategoryListbyidModel;
   WishesDetailsListModel? wishesDetailsListModel;
+  CakeFramesResponse? cakeFramesResponse;
    bool isLoading = true;
    bool isLoadingframe = true;
+   bool isLoadingCakeframe = true;
    String categoryTitle='Frame';
    String wisheSubCategoryID='1';
    String wishesCategoryID='1';
    String statusCode='200';
+   String cakeFrameType='Name';
 
 
 
@@ -74,7 +78,7 @@ class HomeProvider extends ChangeNotifier {
     }
 
 
-  getCategoryList() async {    statusCode='200';
+  getCategoryList() async { statusCode='200';
     isLoading=true;
     notifyListeners();
     final response = await apiService.getGetApiResponse(Urls.getCategoryList, {});
@@ -176,6 +180,9 @@ class HomeProvider extends ChangeNotifier {
     isLoading=true;
     wisheSubCategoryID=id;
     }
+
+
+
   wishesDetailsSubCategoryListByID() async {
     statusCode='200';
     isLoading=true;
@@ -198,6 +205,80 @@ class HomeProvider extends ChangeNotifier {
           },
     );
     }
+
+
+  subCategoryUpdateSequence(List data) async {
+    final response = await apiService.PostGetApiResponse(Urls.subCategoryUpdateSequence,
+        {
+          "orderedIds": data
+        }
+
+    );
+    response.fold(
+          (error) => print("Error: ${error.message}"),
+          (data) {
+            if(data["status"]==true){
+              print("UpdateSequence: $data");
+            }
+          },
+    );
+    }
+
+  void reorderWishesSubCategoryList(int oldIndex, int newIndex) {
+    if (wishesSubCategoryListModel?.data == null) return;
+
+    final list = wishesSubCategoryListModel!.data!;
+    if (oldIndex < newIndex) newIndex -= 1;
+
+    final item = list.removeAt(oldIndex);
+    list.insert(newIndex, item);
+    List data = [];
+    for (int i = 0; i < list.length; i++) {
+       data.add(list[i].subCategoryIdPk);
+    }
+    subCategoryUpdateSequence(data);
+    notifyListeners(); // refresh UI
+  }
+
+
+  setCakeFrameType(String type){
+    cakeFrameType=type;
+  }
+
+  Future<void> getCakeFrame() async {
+    try {
+      statusCode = '200';
+      isLoadingCakeframe = true;
+      notifyListeners();
+
+      final response = await apiService.getGetApiResponse("${Urls.cakeFrame}$cakeFrameType", {});
+
+      response.fold(
+            (error) {
+          debugPrint("Error: ${error.message}");
+          isLoadingCakeframe = false;
+          statusCode = '500';
+          notifyListeners();
+        },
+            (data) {
+          if (data["status"] == true) {
+            debugPrint("Response: $data");
+            cakeFramesResponse = CakeFramesResponse.fromJson(data);
+            statusCode = '200';
+          } else {
+            statusCode = '404';
+          }
+          isLoadingCakeframe = false;
+          notifyListeners();
+        },
+      );
+    } catch (e) {
+      debugPrint("Exception in getCakeFrame: $e");
+      isLoadingCakeframe = false;
+      statusCode = '404';
+      notifyListeners();
+    }
+  }
 
 
 

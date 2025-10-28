@@ -8,5 +8,7 @@ class Urls {
   static const wishesSubCategoryList = '${baseUrls}subCategory/getSubCategorylist';
   static const wishesSubCategoryListByID = '${baseUrls}subCategory/list/';//id
   static const wishesWishesDetailsListByID = '${baseUrls}wishes/list/';//id
+  static const subCategoryUpdateSequence = '${baseUrls}subCategory/updateSequence';
+  static const cakeFrame = '${baseUrls}CakeFrame/frames/';
 
 }

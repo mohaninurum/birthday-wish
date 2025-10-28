@@ -5,10 +5,17 @@ import 'package:birthday_photo_maker/routes/app_routes.dart';
 import 'package:birthday_photo_maker/routes/app_routes_name.dart';
 import 'package:birthday_photo_maker/views/home_screen/home_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+
   runApp(
     MultiProvider(
       providers: [

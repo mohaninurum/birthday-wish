@@ -7,5 +7,6 @@ class AppRoutesName {
   static const String birthdayWishesScreen = '/BirthdayWishesScreen';
   static const String birthdayWishesSubCategoryListScreen = '/BirthdayWishesSubCategoryListScreen';
   static const String wishesDetailsScreen = '/WishesDetailsScreen';
+  static const String cakeFrame = '/CakeFrame';
 
 }

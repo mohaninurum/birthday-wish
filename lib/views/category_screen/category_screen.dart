@@ -64,7 +64,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
             // GlobalKey se drawer open karo
             _scaffoldKey.currentState?.openDrawer();
           },
-          title: 'Happy Birthday, Sam',
+          title: 'Happy Birthday,',
           subtitle: 'Wishing you a day full of joy and surprises! 🎁',
         ),
       ),
@@ -110,7 +110,9 @@ class _CategoryScreenState extends State<CategoryScreen> {
                    ),
                   InkWell(
                     onTap:  () {
-                      // Navigator.pushNamed(context,AppRoutesName.frameListScreen);
+                      context.read<HomeProvider>().setCakeFrameType ("Name");
+                      Navigator.pushNamed(context,AppRoutesName.cakeFrame,);
+
 
                     },
                      child: FeatureCard(
@@ -124,7 +126,8 @@ class _CategoryScreenState extends State<CategoryScreen> {
                    ),
                   InkWell(
                     onTap:  () {
-                      Navigator.pushNamed(context,AppRoutesName.frameListScreen);
+                      context.read<HomeProvider>().setCakeFrameType ("Photo");
+                      Navigator.pushNamed(context,AppRoutesName.cakeFrame);
 
                     },
                      child: FeatureCard(
@@ -879,7 +882,7 @@ class BirthdayDrawer extends StatelessWidget {
                             Navigator.pushNamed(
                               context,
                               AppRoutesName.frameEditorScreen,
-                              arguments: FrameData(), // ✅ correct order
+                              arguments: FrameData() , // ✅ correct order
                             );
                           },
                           child: Container(

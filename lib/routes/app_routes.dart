@@ -6,6 +6,7 @@ import 'package:page_transition/page_transition.dart';
 import '../model/frame_list_model/frame_list_model.dart';
 import '../views/birthday_wishes/birthday_wishes_category_screen.dart';
 import '../views/birthday_wishes_Sub_category_List_screen/birthday_wishes_Sub_category_List_screen.dart';
+import '../views/cake_frame/cake_frame.dart';
 import '../views/category_screen/category_screen.dart';
 import '../views/frame_category/frame_category.dart';
 import '../views/frame_editor/editor_screen.dart';
@@ -46,6 +47,8 @@ class AppRoutes {
         return PageTransition(child: BirthdayWishesSubCategoryListScreen(), type: PageTransitionType.leftToRight, alignment: Alignment.center, duration: const Duration(milliseconds: 500), settings: settings);
           case AppRoutesName.wishesDetailsScreen:
         return PageTransition(child: wishesDetailsScreen(), type: PageTransitionType.leftToRight, alignment: Alignment.center, duration: const Duration(milliseconds: 500), settings: settings);
+         case AppRoutesName.cakeFrame:
+        return PageTransition(child: CakeFrame(), type: PageTransitionType.leftToRight, alignment: Alignment.center, duration: const Duration(milliseconds: 500), settings: settings);
 
       // case AppRoutesName.frameEditorScreen:
       //      final frame = settings.arguments as FrameModel;

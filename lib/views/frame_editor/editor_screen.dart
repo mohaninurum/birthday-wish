@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'dart:io';
 import 'dart:ui';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:birthday_photo_maker/provider/Home_provider/Home_provider.dart';
 import 'package:birthday_photo_maker/routes/app_routes_name.dart';
 import 'package:birthday_photo_maker/widgets/BirthdayLoadingRing.dart';
@@ -18,7 +19,7 @@ import 'package:screenshot/screenshot.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
-
+import 'package:http/http.dart' as http;
 import '../../constant/color/app_colors.dart';
 import '../../model/frame_list_model/frame_list_model.dart';
 import '../../provider/editor_provider/edit_provider.dart';
@@ -26,7 +27,9 @@ import '../../provider/editor_provider/edit_provider.dart';
 class EditorScreen extends StatefulWidget {
   final FrameData? frame;
   final int? frameType;
-  const EditorScreen({super.key, this.frame,this.frameType});
+
+
+   EditorScreen({super.key, this.frame,this.frameType});
 
   @override
   _EditorScreenState createState() => _EditorScreenState();
@@ -54,9 +57,15 @@ class _EditorScreenState extends State<EditorScreen> {
   bool _inAction = false;
   String? selectedFrame;
   List<EditableItem> items = [];
-
+  var decodedImage;
   // Which background slot to fill next (1 -> 2 -> 3 -> 1 ...)
   int frameType = 0;
+
+  ui.Image? _decodedFrameImage;
+  Size? canvasSize;
+
+  bool isContinue=false;
+
 
   // Screenshot
   final ScreenshotController screenshotController = ScreenshotController();
@@ -96,7 +105,7 @@ class _EditorScreenState extends State<EditorScreen> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
 
-      _loadFrameImage();
+      _loadFrameImage('init');
       Provider.of<EditProvider>(context, listen: false).getStickerList();
       context.read<HomeProvider>().getFrameList();
     });
@@ -115,7 +124,9 @@ class _EditorScreenState extends State<EditorScreen> {
 
   @override
   Widget build(BuildContext context) {
+
     return Scaffold(
+      backgroundColor: Colors.black,
       appBar: AppBar(
         title: const Text('Edit'),
         backgroundColor: AppColors.appSecondaryColor.withValues(alpha: 0.6),
@@ -150,104 +161,121 @@ class _EditorScreenState extends State<EditorScreen> {
           Expanded(
             child: Screenshot(
               controller: screenshotController,
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onScaleStart: (details) {
-                  if (_activeItem == null && _activeBgItem == null) return;
+              child:  Center(
+                child: AspectRatio(
+                  aspectRatio: selectedFrame != null? canvasSize!.width / canvasSize!.height:1,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onScaleStart: (details) {
+                      if (_activeItem == null && _activeBgItem == null) return;
 
-                  _initLocal = _toLocal(details.focalPoint);
+                      _initLocal = _toLocal(details.focalPoint);
 
-                  if (_activeItem != null) {
-                    _currentPos = _activeItem!.position;
-                    _currentScale = _activeItem!.scale;
-                    _currentRotation = _activeItem!.rotation;
-                  } else if (_activeBgItem != null) {
-                    _currentPos = _activeBgItem!.position;
-                    _currentScale = _activeBgItem!.scale;
-                    _currentRotation = _activeBgItem!.rotation;
-                  }
-                },
-                onScaleUpdate: (details) {
-                  if (_activeItem == null && _activeBgItem == null) return;
-                  final size = _canvasSize;
-                  final local = _toLocal(details.focalPoint);
-                  if (size == null || _initLocal == null || local == null) return;
+                      if (_activeItem != null) {
+                        _currentPos = _activeItem!.position;
+                        _currentScale = _activeItem!.scale;
+                        _currentRotation = _activeItem!.rotation;
+                      } else if (_activeBgItem != null) {
+                        _currentPos = _activeBgItem!.position;
+                        _currentScale = _activeBgItem!.scale;
+                        _currentRotation = _activeBgItem!.rotation;
+                      }
+                    },
+                    onScaleUpdate: (details) {
+                      if (_activeItem == null && _activeBgItem == null) return;
+                      final size = _canvasSize;
+                      final local = _toLocal(details.focalPoint);
+                      if (size == null || _initLocal == null || local == null) return;
 
-                  final delta = local - _initLocal!;
-                  final dx = delta.dx / size.width;
-                  final dy = delta.dy / size.height;
+                      final delta = local - _initLocal!;
+                      final dx = delta.dx / size.width;
+                      final dy = delta.dy / size.height;
 
-                  setState(() {
-                    if (_activeItem != null) {
-                      _activeItem!.position =
-                          Offset((_currentPos?.dx ?? 0) + dx, (_currentPos?.dy ?? 0) + dy);
-                      _activeItem!.rotation = details.rotation + _currentRotation;
-                      _activeItem!.scale =
-                          math.max(math.min(details.scale * _currentScale, 3), 0.3);
-                    } else if (_activeBgItem != null) {
-                      _activeBgItem!.position =
-                          Offset((_currentPos?.dx ?? 0) + dx, (_currentPos?.dy ?? 0) + dy);
-                      _activeBgItem!.rotation = details.rotation + _currentRotation;
-                      _activeBgItem!.scale =
-                          math.max(math.min(details.scale * _currentScale, 3), 0.3);
-                    }
-                  });
-                },
-                // Keep background selection after gesture (so delete button visible)
-                onScaleEnd: (_) {
-                  _initLocal = null;
-                },
-                onTapDown: (_) {
-                  if (!_pointerDownOnItem) {
-                    setState(() {
-                      _activeItem = null;
-                      _activeBgItem = null; // clear background selection too
-                    });
-                  }
-                },
-                child: Stack(
-                  children: [
-                    // Canvas background holder with key (important for size/coords)
-                    Container(key: _canvasKey, color: Colors.black87),
+                      setState(() {
+                        if (_activeItem != null) {
+                          _activeItem!.position =
+                              Offset((_currentPos?.dx ?? 0) + dx, (_currentPos?.dy ?? 0) + dy);
+                          _activeItem!.rotation = details.rotation + _currentRotation;
+                          _activeItem!.scale =
+                              math.max(math.min(details.scale * _currentScale, 3), 0.3);
+                        } else if (_activeBgItem != null) {
+                          _activeBgItem!.position =
+                              Offset((_currentPos?.dx ?? 0) + dx, (_currentPos?.dy ?? 0) + dy);
+                          _activeBgItem!.rotation = details.rotation + _currentRotation;
+                          _activeBgItem!.scale =
+                              math.max(math.min(details.scale * _currentScale, 3), 0.3);
+                        }
+                      });
+                    },
+                    // Keep background selection after gesture (so delete button visible)
+                    onScaleEnd: (_) {
+                      _initLocal = null;
+                    },
+                    onTapDown: (_) {
+                      if (!_pointerDownOnItem) {
+                        setState(() {
+                          _activeItem = null;
+                          _activeBgItem = null; // clear background selection too
+                        });
+                      }
+                    },
 
-                    // Background layers (each independently draggable + deletable)
-                    if (_backgroundItem1 != null)
-                      _buildItemWidget(_backgroundItem1!, true),
-                    if (_backgroundItem2 != null)
-                      _buildItemWidget(_backgroundItem2!, true),
-                    // if (_backgroundItem3 != null)
-                    //   _buildItemWidget(_backgroundItem3!, true),
 
-                    // Selected frame overlay (IgnorePointer so touches pass-through)
-                    if (selectedFrame != null)
-                      IgnorePointer(
-                        ignoring: true,
-                        child: Padding(
-                          padding: const EdgeInsets.all(0.0),
-                          child: CachedNetworkImage(
-                            height: _canvasSize?.height ??
-                                MediaQuery.of(context).size.height,
-                            width: _canvasSize?.width ??
-                                MediaQuery.of(context).size.width,
-                            fit: BoxFit.fitWidth,
-                            imageUrl: selectedFrame!,
-                            progressIndicatorBuilder: (context, url, downloadProgress) =>
-                            const Center(child: BirthdayLoadingRing()),
-                            errorWidget: (context, url, error) => const Icon(Icons.error),
-                          ),
-                        ),
-                      )
-                    else
-                      const Center(
-                        child: Text(
-                          "Add Frame",
-                          style: TextStyle(color: AppColors.appWhiteColor),
-                        ),
+                    child: selectedFrame != null? Container(
+                      // width: canvasSize!.width,
+                      // height: canvasSize!.height,
+                      color: Colors.black,
+                      child: Stack(
+                        children: [
+                          // Canvas background holder with key (important for size/coords)
+                          Container(
+                              key: _canvasKey, color: Colors.black87),
+                          // Background layers (each independently draggable + deletable)
+                          if (_backgroundItem1 != null)
+                            _buildItemWidget(_backgroundItem1!, true),
+
+                          if (_backgroundItem2 != null)
+                            _buildItemWidget(_backgroundItem2!, true),
+
+                          // if (_backgroundItem3 != null)
+                          //   _buildItemWidget(_backgroundItem3!, true),
+
+                          // Selected frame overlay (IgnorePointer so touches pass-through)
+                          if (selectedFrame != null)
+                            IgnorePointer(
+                              ignoring: true,
+                              child: Padding(
+                                padding: const EdgeInsets.all(0.0),
+                                child: CachedNetworkImage(
+                                  width: canvasSize!.width,
+                                  height: canvasSize!.height,
+                                  fit: BoxFit.contain,
+                                  imageUrl: selectedFrame!,
+                                  progressIndicatorBuilder: (context, url, downloadProgress) =>
+                                  const Center(child: BirthdayLoadingRing()),
+                                  errorWidget: (context, url, error) => const Icon(Icons.error),
+                                ),
+                              ),
+                            )
+                          else
+                            const Center(
+                              child: Text(
+                                "Add Frame",
+                                style: TextStyle(color: AppColors.appWhiteColor),
+                              ),
+                            ),
+
+                          // Foreground items (text/emoji/sticker)
+                          ...items.map((e) => _buildItemWidget(e, false)).toList(),
+                        ],
                       ),
-
-                    // Foreground items (text/emoji/sticker)
-                    ...items.map((e) => _buildItemWidget(e, false)).toList(),
-                  ],
+                    ):isContinue? const Center(
+                      child: Text(
+                        "Add Frame",
+                        style: TextStyle(color: AppColors.appWhiteColor),
+                      ),
+                    ):BirthdayLoadingRing(),
+                  ),
                 ),
               ),
             ),
@@ -289,6 +317,20 @@ class _EditorScreenState extends State<EditorScreen> {
                             value: imageUrl,
                           ));
                         });
+                        print(items[0].scale);
+                        print(items[0].rotation);
+                        print(items[0].position);
+                        print(items[0].fontFamily);
+                        print(items[0].value);
+                        print(items[0].fontSize);
+                        print(items[0].fontWeight);
+                        print(items[0].color);
+                        print(items[0].fontStyle);
+                        print(items[0].type);
+                        print(frameType);
+                        print(_backgroundItem1);
+                        print(_backgroundItem2);
+
                       },
                     );
                   }),
@@ -352,7 +394,7 @@ class _EditorScreenState extends State<EditorScreen> {
       case ItemType.Image:
         content = Image.file(
           File(e.value),
-          fit: BoxFit.fitWidth,
+          fit: BoxFit.contain,
           height: canvas.height,
           width: canvas.width,
         );
@@ -511,10 +553,38 @@ class _EditorScreenState extends State<EditorScreen> {
     }
   }
 
-  Future<void> _loadFrameImage() async {
-    final args = ModalRoute.of(context)?.settings.arguments as FrameData?;
-    setState(() => selectedFrame = args?.frameImage ?? widget.frame?.frameImage);
+
+  Future<void> _loadFrameImage(String fmUlr) async {
+    String? frameUrl='';
+    if(fmUlr=='init'){
+     final args = ModalRoute.of(context)?.settings.arguments as FrameData?;
+      frameUrl = args?.frameImage ?? widget.frame?.frameImage;
+      print("Frame>>>>>>>>>>>>>>$frameUrl");
+      if(frameUrl!=null){
+      }else{
+        isContinue=true;
+        setState(() {
+
+        });
+      }
+   }else{
+      frameUrl = fmUlr;
+    }
+
+    if (frameUrl == null) return;
+
+    // Fetch from network
+    final response = await http.get(Uri.parse(frameUrl));
+     decodedImage = await decodeImageFromList(response.bodyBytes);
+    if (mounted) {
+      setState(() {
+        selectedFrame = frameUrl;
+        _decodedFrameImage = decodedImage;
+        canvasSize = Size(decodedImage.width.toDouble(), decodedImage.height.toDouble());
+      });
+    }
   }
+
 
   Future<void> _captureBackgroundImage() async {
     final picker = ImagePicker();
@@ -524,7 +594,16 @@ class _EditorScreenState extends State<EditorScreen> {
     );
     if (picked != null) {
       setState(() {
-        if (frameType == 1) {
+        if(frameType==0){
+          print("singleFrame");
+          _backgroundItem1 = EditableItem(
+            type: ItemType.Image,
+            value: picked.path,
+            position: const Offset(0.0, 0.0),
+            scale: 1.0,
+            rotation: 0.0,
+          );
+        }else if (frameType == 1) {
           _backgroundItem1 = EditableItem(
             type: ItemType.Image,
             value: picked.path,
@@ -552,6 +631,35 @@ class _EditorScreenState extends State<EditorScreen> {
           // );
           // frameType = 1;
         }
+        ////
+        // if (frameType == 1) {
+        //   _backgroundItem1 = EditableItem(
+        //     type: ItemType.Image,
+        //     value: picked.path,
+        //     position: const Offset(0.0, 0.0),
+        //     scale: 1.0,
+        //     rotation: 0.0,
+        //   );
+        //   frameType = 2;
+        // } else if (frameType == 2) {
+        //   _backgroundItem2 = EditableItem(
+        //     type: ItemType.Image,
+        //     value: picked.path,
+        //     position: const Offset(0.0, 0.0),
+        //     scale: 1.0,
+        //     rotation: 0.0,
+        //   );
+        //   frameType = 1;
+        // } else {
+        //   // _backgroundItem3 = EditableItem(
+        //   //   type: ItemType.Image,
+        //   //   value: picked.path,
+        //   //   position: const Offset(0.0, 0.0),
+        //   //   scale: 1.0,
+        //   //   rotation: 0.0,
+        //   // );
+        //   // frameType = 1;
+        // }
       });
     }
   }
@@ -650,7 +758,10 @@ class _EditorScreenState extends State<EditorScreen> {
                           items: frameUrls,
                           tileSize: 120,
                           onTap: (url) {
-                            setState(() => selectedFrame = url);
+                            _loadFrameImage(url);
+                            setState((){
+                              selectedFrame = null;
+                            });
                             Navigator.pop(ctx);
                           },
                         );
@@ -2111,12 +2222,9 @@ class EditableItem {
   double? fontSize;
   FontWeight? fontWeight;
   FontStyle? fontStyle;
-
-  // Normalized position (0..1)
   Offset position;
   double scale;
   double rotation;
-
   ItemType type;
   String value;
   Color color;
