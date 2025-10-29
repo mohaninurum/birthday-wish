@@ -45,7 +45,10 @@ class _CakeFrameState extends State<CakeFrame> {
           }
           return Column(
             children: [
-           provider.isLoadingCakeframe? BirthdayLoadingRing(): SingleChildScrollView(
+           provider.isLoadingCakeframe? Center(child: Padding(
+             padding: const EdgeInsets.all(25.0),
+             child: BirthdayLoadingRing(),
+           )): SingleChildScrollView(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Column(

@@ -879,10 +879,11 @@ class BirthdayDrawer extends StatelessWidget {
                         const SizedBox(height: 10),
                         InkWell(
                           onTap: () {
+
                             Navigator.pushNamed(
                               context,
                               AppRoutesName.frameEditorScreen,
-                              arguments: FrameData() , // ✅ correct order
+                              arguments: FrameData(categoryName: "template") , // ✅ correct order
                             );
                           },
                           child: Container(

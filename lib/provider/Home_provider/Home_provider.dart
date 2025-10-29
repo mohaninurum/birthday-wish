@@ -7,6 +7,7 @@ import '../../model/birthday_catogory_model/wishes_category_mdoel.dart';
 import '../../model/cake_frame/cake_frame.dart';
 import '../../model/category_list_Model/category_list_model.dart';
 import '../../model/frame_list_model/frame_list_model.dart';
+import '../../model/templates_model/templates_model.dart';
 import '../../model/wishesSub_Category_ListByID/wishesSub_category_listByID.dart';
 import '../../model/wishes_details_list_model/wishes_details_list_model.dart';
 
@@ -20,6 +21,7 @@ class HomeProvider extends ChangeNotifier {
   WishessubCategoryListbyidModel? wishessubCategoryListbyidModel;
   WishesDetailsListModel? wishesDetailsListModel;
   CakeFramesResponse? cakeFramesResponse;
+  TemplateResponse? templatesModel;
    bool isLoading = true;
    bool isLoadingframe = true;
    bool isLoadingCakeframe = true;
@@ -151,12 +153,12 @@ class HomeProvider extends ChangeNotifier {
   }
 
 
-  getWishesSubCategoryList() async {    statusCode='200';
+  getWishesSubCategoryList() async {
+    statusCode='200';
     isLoading=true;
     notifyListeners();
     final response = await apiService.getGetApiResponse("${Urls.wishesSubCategoryListByID}$wishesCategoryID", {});
     print("Response: $response");
-
     response.fold(
           (error) => print("Error: ${error.message}"),
           (data) {
@@ -174,6 +176,59 @@ class HomeProvider extends ChangeNotifier {
             }
           },
     );
+    }
+
+    getTemplateList() async {
+    statusCode='200';
+    isLoading=true;
+    notifyListeners();
+    templatesModel = TemplateResponse.fromJson({
+      "frameType": "double",
+      "items": [
+        {
+          "scale": 1.0,
+          "rotation": 0.0,
+          "position": { "dx": 100.0, "dy": 200.0 },
+          "fontFamily": "Poppins",
+          "value": "Happy Anniversary!",
+          "fontSize": 20.0,
+          "fontWeight": "FontWeight.w500",
+          "color": 4280391411,
+          "fontStyle": "FontStyle.normal",
+          "type": "text"
+        }
+      ],
+      "background1": {
+        "type": "image",
+        "position": { "dx": 0.0, "dy": 0.0 },
+        "rotation": 0.0,
+        "scale": 1.0,
+        "value": "assets/backgrounds/bg1.png"
+      },
+    }
+    );
+    isLoading = false;
+    statusCode='200';
+    notifyListeners();
+    // final response = await apiService.getGetApiResponse("${Urls.wishesSubCategoryListByID}$wishesCategoryID", {});
+    // print("Response: $response");
+    // response.fold(
+    //       (error) => print("Error: ${error.message}"),
+    //       (data) {
+    //         print(data);
+    //         if(data["status"]==true){
+    //           print("Category: $data");
+    //           wishesSubCategoryListModel = WishesSubCategoryListModel.fromJson(data);
+    //           isLoading = false;
+    //           statusCode='200';
+    //           notifyListeners();
+    //         }else{
+    //           statusCode="404";
+    //           isLoading = false;
+    //           notifyListeners();
+    //         }
+    //       },
+    // );
     }
 
   setWishesSubCategoryListByID(String id) async {

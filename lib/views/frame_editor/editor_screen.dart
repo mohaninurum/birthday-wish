@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:io';
 import 'dart:ui';
@@ -22,6 +23,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:http/http.dart' as http;
 import '../../constant/color/app_colors.dart';
 import '../../model/frame_list_model/frame_list_model.dart';
+import '../../model/templates_model/templates_model.dart';
 import '../../provider/editor_provider/edit_provider.dart';
 
 class EditorScreen extends StatefulWidget {
@@ -60,7 +62,7 @@ class _EditorScreenState extends State<EditorScreen> {
   var decodedImage;
   // Which background slot to fill next (1 -> 2 -> 3 -> 1 ...)
   int frameType = 0;
-
+  TemplateResponse? templatesModel;
   ui.Image? _decodedFrameImage;
   Size? canvasSize;
 
@@ -104,8 +106,13 @@ class _EditorScreenState extends State<EditorScreen> {
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if(widget.frame?.categoryName=='template'){
+        print(">>>>${widget.frame?.categoryName}");
+        _loadFrameImage('template');
+      }else{
+        _loadFrameImage('init');
+      }
 
-      _loadFrameImage('init');
       Provider.of<EditProvider>(context, listen: false).getStickerList();
       context.read<HomeProvider>().getFrameList();
     });
@@ -122,9 +129,9 @@ class _EditorScreenState extends State<EditorScreen> {
     return box?.globalToLocal(global);
   }
 
+
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -328,7 +335,11 @@ class _EditorScreenState extends State<EditorScreen> {
                         print(items[0].fontStyle);
                         print(items[0].type);
                         print(frameType);
-                        print(_backgroundItem1);
+                        print(_backgroundItem1?.type);
+                        print(_backgroundItem1?.position);
+                        print(_backgroundItem1?.rotation);
+                        print(_backgroundItem1?.scale);
+                        print(_backgroundItem1?.value);
                         print(_backgroundItem2);
 
                       },
@@ -554,6 +565,108 @@ class _EditorScreenState extends State<EditorScreen> {
   }
 
 
+  getTemplateList() async {
+    const jsonString = '''
+  {
+    "templates": [
+      {
+        "frameType": "double",
+        "items": [
+          {
+            "scale": 1.0,
+            "rotation": 0.0,
+            "position": { "dx": 300.0, "dy": 300.0 },
+            "fontFamily": "Poppins",
+            "value": "Happy Anniversary!",
+            "fontSize": 20.0,
+            "fontWeight": "FontWeight.w500",
+            "color": 4280391411,
+            "fontStyle": "FontStyle.normal",
+            "type": "text"
+          }
+        ],
+        "background1": [
+          {
+            "type": "image",
+            "position": { "dx": 0.0, "dy": 0.0 },
+            "rotation": 0.0,
+            "scale": 1.0,
+            "value": "https://i.pravatar.cc/"
+          },
+          {
+            "type": "image",
+            "position": { "dx": 200.0, "dy": 0.0 },
+            "rotation": 0.0,
+            "scale": 1.0,
+            "value": "https://i.pravatar.cc/"
+          }
+        ],
+        "frame": {
+          "value": "https://plus.unsplash.com/premium_photo-1760640030249-8409eded0ca3?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=687"
+        }
+      }
+    ]
+  }
+  ''';
+
+
+    templatesModel = TemplateResponse.fromJson(jsonDecode(jsonString));
+     print('loading... frame${templatesModel?.templates[0].frame?.value.toString()??''}');
+      final response = await http.get(Uri.parse(templatesModel?.templates[0].frame?.value.toString()??''));
+      decodedImage = await decodeImageFromList(response.bodyBytes);
+      if (mounted) {
+        setState(() {
+          selectedFrame = templatesModel?.templates[0].frame?.value.toString()??'';
+          _decodedFrameImage = decodedImage;
+          canvasSize = Size(decodedImage.width.toDouble(), decodedImage.height.toDouble());
+          items.add( EditableItem(
+            rotation: templatesModel?.templates[0].items[0].rotation??1.0,
+            position: Offset(templatesModel?.templates[0].items[0].position.dx??1.0, templatesModel?.templates[0].items[0].position.dy??1.0),
+            scale: templatesModel?.templates[0].items[0].scale??1.0,
+            fontWeight: _parseFontWeight(templatesModel?.templates[0].items[0].fontWeight??'') ,
+            type: ItemType.Text,
+            value: templatesModel?.templates[0].items[0].value??'',
+            color: Colors.blueAccent,
+            fontFamily: templatesModel?.templates[0].items[0].fontFamily??'',
+            fontSize: templatesModel?.templates[0].items[0].fontSize??14,
+            fontStyle: _parseFontStyle(templatesModel?.templates[0].items[0].fontStyle??''),
+          ));
+
+          print(items[0].value);
+
+        });
+      }
+
+ setState(() {
+
+ });
+  }
+
+
+   FontWeight _parseFontWeight(dynamic value) {
+    final str = value?.toString().toLowerCase() ?? '';
+
+    if (str.contains('w100')) return FontWeight.w100;
+    if (str.contains('w200')) return FontWeight.w200;
+    if (str.contains('w300')) return FontWeight.w300;
+    if (str.contains('w400')) return FontWeight.w400;
+    if (str.contains('w500')) return FontWeight.w500;
+    if (str.contains('w600')) return FontWeight.w600;
+    if (str.contains('w700')) return FontWeight.w700;
+    if (str.contains('w800')) return FontWeight.w800;
+    if (str.contains('w900')) return FontWeight.w900;
+    if (str.contains('bold')) return FontWeight.bold;
+    if (str.contains('normal')) return FontWeight.normal;
+    return FontWeight.normal;
+  }
+
+  /// Convert "FontStyle.italic" → FontStyle.italic
+   FontStyle _parseFontStyle(dynamic value) {
+    final str = value?.toString().toLowerCase() ?? '';
+    if (str.contains('italic')) return FontStyle.italic;
+    return FontStyle.normal;
+  }
+
   Future<void> _loadFrameImage(String fmUlr) async {
     String? frameUrl='';
     if(fmUlr=='init'){
@@ -567,22 +680,24 @@ class _EditorScreenState extends State<EditorScreen> {
 
         });
       }
-   }else{
+   }else if(fmUlr=='template'){
+      getTemplateList();
+    }else{
       frameUrl = fmUlr;
     }
-
     if (frameUrl == null) return;
-
     // Fetch from network
-    final response = await http.get(Uri.parse(frameUrl));
-     decodedImage = await decodeImageFromList(response.bodyBytes);
-    if (mounted) {
-      setState(() {
-        selectedFrame = frameUrl;
-        _decodedFrameImage = decodedImage;
-        canvasSize = Size(decodedImage.width.toDouble(), decodedImage.height.toDouble());
-      });
-    }
+if(fmUlr!='template'){
+  final response = await http.get(Uri.parse(frameUrl));
+  decodedImage = await decodeImageFromList(response.bodyBytes);
+  if (mounted) {
+    setState(() {
+      selectedFrame = frameUrl;
+      _decodedFrameImage = decodedImage;
+      canvasSize = Size(decodedImage.width.toDouble(), decodedImage.height.toDouble());
+    });
+  }
+}
   }
 
 
@@ -2269,3 +2384,6 @@ class EditableItem {
     );
   }
 }
+
+
+
